@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.2.3",
+    "@supabase/ssr": "0.12.0",
+    "@supabase/supabase-js": "2.108.1",
     "@tabler/icons-react": "3.34.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
