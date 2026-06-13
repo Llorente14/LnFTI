@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install web dependencies
+        shell: bash
+        run: |
+          if [ -f apps/web/package-lock.json ]; then
+            npm ci --prefix apps/web
+          elif [ -f apps/web/package.json ]; then
+            npm install --prefix apps/web
+          else
+            echo "apps/web belum dibuat; web checks dilewati."
+          fi
+
+      - name: Lint, typecheck, test, and build web
+        shell: bash
+        run: |
+          if [ -f apps/web/package.json ]; then
+            npm --prefix apps/web run lint --if-present
+            npm --prefix apps/web run typecheck --if-present
+            npm --prefix apps/web run test --if-present
+            npm --prefix apps/web run build --if-present
+          fi
+
+  ai:
+    name: AI service checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AI service dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f services/ai/requirements.txt ]; then
+            pip install -r services/ai/requirements.txt
+          elif [ -f services/ai/pyproject.toml ]; then
+            pip install -e services/ai
+          else
+            echo "services/ai belum dibuat; AI checks dilewati."
+          fi
+
+      - name: Run AI service tests
+        shell: bash
+        run: |
+          if [ -d services/ai/tests ]; then
+            python -m pytest services/ai/tests -q
+          fi
