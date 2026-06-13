@@ -50,3 +50,24 @@ test("responsive application shell exists", () => {
   assert.ok(existsSync("src/components/mobile-nav.tsx"));
   assert.ok(existsSync("src/components/app-shell.tsx"));
 });
+
+test("Supabase environment and SSR client boundaries are configured", () => {
+  const pkg = readJson("package.json");
+  const envExample = readFileSync(".env.example", "utf8");
+  const envModule = readFileSync("src/lib/env.ts", "utf8");
+  const browserClient = readFileSync("src/lib/supabase/client.ts", "utf8");
+  const serverClient = readFileSync("src/lib/supabase/server.ts", "utf8");
+  const proxyClient = readFileSync("src/lib/supabase/proxy.ts", "utf8");
+
+  assert.equal(pkg.dependencies["@supabase/ssr"], "0.12.0");
+  assert.equal(pkg.dependencies["@supabase/supabase-js"], "2.108.1");
+  assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL=/);
+  assert.match(envExample, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/);
+  assert.doesNotMatch(envExample, /service_role|sb_secret_/i);
+  assert.match(envModule, /Missing required environment variable/);
+  assert.match(browserClient, /createBrowserClient/);
+  assert.match(browserClient, /client-only/);
+  assert.match(serverClient, /createServerClient/);
+  assert.match(serverClient, /server-only/);
+  assert.match(proxyClient, /auth\.getClaims/);
+});
