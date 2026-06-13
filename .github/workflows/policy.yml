@@ -1,0 +1,38 @@
+name: Branch and PR policy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Branch and PR policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          pattern='^(feature|fix|chore|docs|test|refactor|spike|ci|build)/LNFTI-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+          if [[ ! "$BRANCH" =~ $pattern ]]; then
+            echo "Invalid branch: $BRANCH"
+            echo "Expected: feature/LNFTI-16-found-item-form"
+            exit 1
+          fi
+
+      - name: Validate pull request title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          pattern='^\[LNFTI-[0-9]+\] .+'
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "Invalid pull request title: $TITLE"
+            echo "Expected: [LNFTI-16] Add found item form"
+            exit 1
+          fi
