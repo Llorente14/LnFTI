@@ -1,0 +1,41 @@
+name: Atomic commit policy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  commits:
+    name: Atomic commit policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate every commit message
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                per_page: 100
+              }
+            );
+
+            const pattern = /^LNFTI-\d+ (feat|fix|refactor|test|docs|chore|ci|build|perf|style|revert)(\([a-z0-9-]+\))?: .+/;
+            const invalid = commits
+              .map(commit => commit.commit.message.split("\n")[0])
+              .filter(message => !pattern.test(message));
+
+            if (invalid.length > 0) {
+              core.setFailed(
+                "Invalid commit messages:\n- " + invalid.join("\n- ") +
+                "\nExpected: LNFTI-16 feat(items): add found item form"
+              );
+            }
