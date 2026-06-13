@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf8f7;
+  --foreground: #1a0a0d;
+  --surface: #ffffff;
+  --primary: #8b1a2b;
+  --primary-foreground: #ffffff;
+  --primary-strong: #6b1220;
+  --accent: #c8963a;
+  --accent-foreground: #1a0a0d;
+  --muted: #f5e8ea;
+  --muted-foreground: #5c3340;
+  --border: rgba(139, 26, 43, 0.16);
+  --ring: #b22335;
+  --crimson-deep: #6b1220;
+  --crimson-core: #8b1a2b;
+  --crimson-mid: #b22335;
+  --crimson-pale: #f5e8ea;
+  --crimson-pale-2: #fbecec;
+  --gold-accent: #c8963a;
+  --gold-light: #f2c97a;
+  --gold-pale: #fdf5e6;
+  --text-secondary: #5c3340;
+  --text-muted: #997080;
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --font-heading: var(--font-plus-jakarta);
+  --font-body: var(--font-dm-sans);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  line-height: 1.65;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--crimson-pale);
+  color: var(--crimson-deep);
+}
