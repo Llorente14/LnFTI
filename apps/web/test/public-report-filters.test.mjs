@@ -73,13 +73,18 @@ test("invalid date range is rejected", () => {
   assert.equal(parsed.isValid, false);
 });
 
-test("search input is trimmed and length-limited", () => {
+test("search input is trimmed, length-limited, and safe for PostgREST or filters", () => {
   const parsed = filters.parsePublicReportFilters({
-    q: `  ${"dompet_%(),".repeat(20)}  `,
+    q: `  ${"dompet_%(),.:'\"\\".repeat(20)}  `,
   });
 
   assert.ok(parsed.q.length <= filters.MAX_SEARCH_LENGTH);
-  assert.doesNotMatch(parsed.q, /[%_,()]/);
+  assert.doesNotMatch(parsed.q, /[%_,().:"'\\]/);
+});
+
+test("Jakarta day boundaries preserve the user's local calendar date", () => {
+  assert.equal(filters.toJakartaDayStartIso("2026-06-15"), "2026-06-14T17:00:00.000Z");
+  assert.equal(filters.toJakartaDayEndIso("2026-06-15"), "2026-06-15T16:59:59.999Z");
 });
 
 test("pagination below 1 becomes page 1", () => {
