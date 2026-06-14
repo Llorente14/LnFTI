@@ -52,6 +52,9 @@ const baseReport = {
   eventAt: "2026-01-01T10:00",
 };
 
+const validImagePath =
+  "53500000-0000-0000-0000-000000000001/2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp";
+
 test("valid LOST report passes validation", () => {
   const parsed = validation.reportFormSchema.parse(baseReport);
 
@@ -85,6 +88,20 @@ test("future event time fails", () => {
   );
 });
 
+test("server submission requires an explicit timezone", () => {
+  assert.throws(
+    () => validation.reportSubmissionSchema.parse(baseReport),
+    /zona waktu/,
+  );
+
+  const parsed = validation.reportSubmissionSchema.parse({
+    ...baseReport,
+    eventAt: "2026-01-01T03:00:00.000Z",
+  });
+
+  assert.equal(parsed.eventAt, "2026-01-01T03:00:00.000Z");
+});
+
 test("more than three images fails", () => {
   const image = { name: "photo.jpg", size: 1024, type: "image/jpeg", altText: "" };
 
@@ -116,6 +133,28 @@ test("generated object path uses user ID, report ID, and UUID-safe extension", (
       objectId: "a8ad0000-0000-0000-0000-000000000003",
       mimeType: "image/webp",
     }),
-    "53500000-0000-0000-0000-000000000001/2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp",
+    validImagePath,
+  );
+});
+
+test("image path parser rejects prefix tricks and malformed IDs", () => {
+  assert.equal(imagePath.parseReportImagePath(validImagePath)?.reportId, "2d2d0000-0000-0000-0000-000000000002");
+  assert.equal(imagePath.parseReportImagePath(`${validImagePath}/extra`), null);
+  assert.equal(imagePath.parseReportImagePath("53500000-0000-0000-0000-000000000001/not-a-uuid/photo.webp"), null);
+});
+
+test("finalization metadata enforces sort order shape and alt text length", () => {
+  assert.doesNotThrow(() =>
+    validation.reportImageFinalizeSchema.parse([
+      { storagePath: validImagePath, altText: "Foto dompet", sortOrder: 1 },
+    ]),
+  );
+
+  assert.throws(
+    () =>
+      validation.reportImageFinalizeSchema.parse([
+        { storagePath: validImagePath, altText: "x".repeat(161), sortOrder: 1 },
+      ]),
+    /160/,
   );
 });
