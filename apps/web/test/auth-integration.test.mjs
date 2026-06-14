@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomInt } from "node:crypto";
 import test from "node:test";
+import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 const enabled = process.env.RUN_SUPABASE_AUTH_INTEGRATION === "1";
@@ -25,6 +26,18 @@ function createSupabaseClient() {
       detectSessionInUrl: false,
     },
   });
+}
+
+function uniqueIdentity(firstName = "Browser", prefix = "825") {
+  const sequence = String(randomInt(1000, 9999));
+  const nim = `${prefix}25${sequence}`;
+
+  return {
+    fullName: `${firstName} Student`,
+    nim,
+    email: `${firstName.toLowerCase()}.${nim}@stu.untar.ac.id`,
+    passphrase: `LnftiTest${sequence}!`,
+  };
 }
 
 maybeTest("auth integration signs up institutional user and derives profile", async () => {
@@ -121,3 +134,98 @@ maybeTest("auth integration protects private routes without session", async (t) 
   assert.equal(response.status, 307);
   assert.match(response.headers.get("location") ?? "", /\/login\?next=%2Fme%2Fprofile/);
 });
+
+maybeTest("browser auth session reaches profile, survives reload, and logs out", async () => {
+  assert.ok(appUrl, "NEXT_APP_URL is required");
+  requireIntegrationEnv();
+
+  const identity = uniqueIdentity("Browser", "825");
+  const browser = await chromium.launch();
+  const page = await browser.newPage({
+    extraHTTPHeaders: {
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "https",
+    },
+  });
+
+  try {
+    await page.goto(`${appUrl}/register?next=%2Fme%2Fprofile`);
+    await page.getByLabel("Nama lengkap").fill(identity.fullName);
+    await page.getByLabel("NIM").fill(identity.nim);
+    await page.getByLabel("Email institusional").fill(identity.email);
+    await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
+    await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
+    await page.getByRole("button", { name: "Daftar" }).click();
+
+    await page.waitForURL("**/me/profile");
+    await assertProfileVisible(page, identity.email, identity.nim);
+
+    await page.reload();
+    await assertProfileVisible(page, identity.email, identity.nim);
+
+    await page.getByRole("button", { name: "Keluar" }).click();
+    await page.waitForURL("**/login");
+
+    await page.goto(`${appUrl}/me/profile`);
+    await page.waitForURL("**/login?next=%2Fme%2Fprofile");
+  } finally {
+    await browser.close();
+  }
+});
+
+maybeTest("browser registration duplicates use same safe generic message", async () => {
+  assert.ok(appUrl, "NEXT_APP_URL is required");
+  requireIntegrationEnv();
+
+  const identity = uniqueIdentity("Duplicate", "535");
+  const supabase = createSupabaseClient();
+  const { error } = await supabase.auth.signUp({
+    email: identity.email,
+    password: identity.passphrase,
+    options: {
+      data: {
+        full_name: identity.fullName,
+        nim: identity.nim,
+      },
+    },
+  });
+  assert.equal(error, null);
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const safeMessage = "Registrasi tidak dapat diproses. Email atau NIM mungkin sudah digunakan.";
+
+  try {
+    await submitRegistration(page, identity);
+    await assertRegistrationError(page, safeMessage);
+
+    await submitRegistration(page, {
+      ...uniqueIdentity("DuplicateNim", "825"),
+      nim: identity.nim,
+      email: `duplicatenim.${identity.nim}@stu.untar.ac.id`,
+    });
+    await assertRegistrationError(page, safeMessage);
+  } finally {
+    await browser.close();
+  }
+});
+
+async function submitRegistration(page, identity) {
+  await page.goto(`${appUrl}/register?next=%2Fme%2Fprofile`);
+  await page.getByLabel("Nama lengkap").fill(identity.fullName);
+  await page.getByLabel("NIM").fill(identity.nim);
+  await page.getByLabel("Email institusional").fill(identity.email);
+  await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
+  await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
+  await page.getByRole("button", { name: "Daftar" }).click();
+}
+
+async function assertProfileVisible(page, email, nim) {
+  await page.getByRole("heading", { name: "Akun saya" }).waitFor();
+  await page.getByText(email).waitFor();
+  await page.getByText(nim).waitFor();
+}
+
+async function assertRegistrationError(page, message) {
+  await page.getByText(message).waitFor();
+}
