@@ -34,7 +34,7 @@ function safeCleanupLog(message: string) {
 
 export async function createDraftReportAction(
   values: ReportFormValues,
-): Promise<ActionResult<{ reportId: string; userId: string; itemName: string }>> {
+): Promise<ActionResult<{ reportId: string; itemName: string }>> {
   const user = await requireUser("/report/new");
   const parsed = reportSubmissionSchema.safeParse(values);
 
@@ -69,7 +69,6 @@ export async function createDraftReportAction(
   return {
     status: "success",
     reportId: data.id,
-    userId: user.id,
     itemName: data.item_name,
   };
 }
@@ -86,7 +85,6 @@ export async function finalizeReportSubmissionAction(
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
   }
 
-  const normalizedUserId = user.id.toLowerCase();
   const normalizedReportId = parsedReportId.data.toLowerCase();
   const seenPaths = new Set<string>();
 
@@ -96,7 +94,6 @@ export async function finalizeReportSubmissionAction(
     if (
       image.sortOrder !== index + 1
       || !parsedPath
-      || parsedPath.userId !== normalizedUserId
       || parsedPath.reportId !== normalizedReportId
       || seenPaths.has(image.storagePath)
     ) {
@@ -120,7 +117,7 @@ export async function finalizeReportSubmissionAction(
   }
 
   if (parsedImages.data.length > 0) {
-    const folderPath = `${normalizedUserId}/${normalizedReportId}`;
+    const folderPath = normalizedReportId;
     const { data: storedObjects, error: storageError } = await supabase.storage
       .from(REPORT_IMAGE_BUCKET)
       .list(folderPath, { limit: 10 });
