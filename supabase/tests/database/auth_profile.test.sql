@@ -66,15 +66,21 @@ select is(
   (
     select count(*)::integer
     from pg_proc
-    cross join (values ('PUBLIC'), ('anon'), ('authenticated')) as roles(role_name)
-    where oid in (
+    cross join lateral aclexplode(coalesce(proacl, acldefault('f', proowner))) as function_acl
+    left join pg_roles as grantee_roles
+      on grantee_roles.oid = function_acl.grantee
+    where pg_proc.oid in (
       'public.normalize_auth_first_name(text)'::regprocedure,
       'public.resolve_institutional_identity(text,text,text)'::regprocedure,
       'public.on_auth_user_created()'::regprocedure,
       'public.on_auth_user_email_confirmed()'::regprocedure,
       'public.protect_institutional_email_change()'::regprocedure
     )
-      and has_function_privilege(roles.role_name, oid, 'EXECUTE')
+      and function_acl.privilege_type = 'EXECUTE'
+      and (
+        function_acl.grantee = 0
+        or grantee_roles.rolname in ('anon', 'authenticated')
+      )
   ),
   0,
   'PUBLIC, anon, and authenticated cannot execute new auth functions directly'
