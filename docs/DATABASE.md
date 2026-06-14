@@ -38,6 +38,14 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ```
 
+Also set this server-only value for auth redirects:
+
+```text
+APP_ORIGIN
+```
+
+`APP_ORIGIN` must be the trusted application origin. `http` is allowed only for `localhost` and `127.0.0.1`; hosted environments must use `https`. Do not include username, password, path, query, or fragment.
+
 Do not store database passwords, access tokens, or privileged Supabase keys in repository files.
 
 ## Local Supabase
@@ -116,6 +124,8 @@ Seeded UNTAR FTI rules:
 
 The auth trigger accepts only signup metadata `full_name` and `nim`. Role, organization, program, cohort, and verification fields are derived inside the database and are not trusted from browser metadata.
 
+Email confirmation links must point to the configured app origin and `/auth/confirm`. The route accepts only Supabase signup/email confirmation token types and rejects invite, magiclink, recovery, and email-change tokens.
+
 Broad role-based RLS remains delegated to LNFTI-14. This ticket adds only authenticated users reading their own profile. It does not add report, claim, handover, audit, export, storage, or verifier policies.
 
 Run the database suite after changing migrations:
@@ -126,5 +136,19 @@ npx supabase test db
 ```
 
 The LNFTI-13 pgTAP file has 31 assertions. The LNFTI-12 initial schema file keeps its 91 planned assertions while allowing the new own-profile policy.
+
+Run app-session integration with local Supabase and the Next.js app:
+
+```bash
+cd apps/web
+RUN_SUPABASE_AUTH_INTEGRATION=1 \
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local-anon-or-publishable-key> \
+APP_ORIGIN=http://127.0.0.1:3000 \
+NEXT_APP_URL=http://127.0.0.1:3000 \
+npm run test:auth-integration
+```
+
+The integration suite verifies Supabase profile creation plus browser registration, SSR cookies, profile reload, logout, unauthenticated redirect, and duplicate email/NIM generic error behavior.
 
 Remote database push was not performed for LNFTI-13.

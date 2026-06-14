@@ -21,12 +21,14 @@ Set the Supabase values in `.env.local` before opening the app:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+APP_ORIGIN=http://localhost:3000
 ```
 
 Open `http://localhost:3000`.
 
 Use the Project URL and Publishable key from the Supabase Dashboard Connect dialog.
 Do not place secret keys or service-role keys in `NEXT_PUBLIC_*` variables.
+Set `APP_ORIGIN` to the trusted app origin only. `http` is accepted only for `localhost` and `127.0.0.1`; hosted environments must use `https`. Do not include a path, query, fragment, username, or password.
 The app uses separate Supabase helpers for browser code and server-only code in `src/lib/supabase`.
 Database migration and local Supabase commands are documented in `../../docs/DATABASE.md`.
 
@@ -47,8 +49,10 @@ Local Supabase has email confirmation disabled in `supabase/config.toml`, so a v
 - Email/password provider enabled.
 - Site URL set to the deployed app URL.
 - Redirect URL for `/auth/confirm`.
-- Confirmation template using Supabase `token_hash` links.
+- Confirmation template using Supabase `token_hash` links with `type=signup` or `type=email`.
 - SMTP provider before production launch.
+
+The confirmation route rejects invite, magiclink, recovery, and email-change tokens. Recovery tokens are not exchanged into a profile session.
 
 Private pages under `/me/*`, `/report/new`, and `/admin/*` redirect unauthenticated users to `/login?next=...`. Server components re-check the user with Supabase `getUser()`.
 
@@ -61,6 +65,7 @@ cd apps/web
 RUN_SUPABASE_AUTH_INTEGRATION=1 \
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local-anon-or-publishable-key> \
+APP_ORIGIN=http://127.0.0.1:3000 \
 NEXT_APP_URL=http://127.0.0.1:3000 \
 npm run test:auth-integration
 ```
