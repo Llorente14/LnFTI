@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:auth-integration": "node --test test/auth-integration.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.2.3",
