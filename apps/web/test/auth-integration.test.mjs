@@ -170,6 +170,7 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
     await page.getByRole("button", { name: "Masuk" }).click();
     await page.getByText("Email atau password tidak valid.").waitFor();
 
+    await page.getByLabel("Email institusional").fill(identity.email);
     await page.getByLabel("Password").fill(identity.passphrase);
     await page.getByRole("button", { name: "Masuk" }).click();
     await page.waitForURL("**/me/profile");
