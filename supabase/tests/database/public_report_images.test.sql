@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(11);
 
 select ok(
   exists (
@@ -105,27 +105,27 @@ insert into public.report_images (
 ) values
   (
     '2d2d0000-0000-0000-0000-000000000017',
-    '53500000-0000-0000-0000-000000000017/2d2d0000-0000-0000-0000-000000000017/a8ad0000-0000-0000-0000-000000000017.webp',
+    '2d2d0000-0000-0000-0000-000000000017/a8ad0000-0000-0000-0000-000000000017.webp',
     'Foto dompet',
     1
   ),
   (
     '2d2d0000-0000-0000-0000-000000000018',
-    '53500000-0000-0000-0000-000000000017/2d2d0000-0000-0000-0000-000000000018/a8ad0000-0000-0000-0000-000000000018.webp',
+    '2d2d0000-0000-0000-0000-000000000018/a8ad0000-0000-0000-0000-000000000018.webp',
     'Foto botol',
     1
   );
 
 select ok(
   public.is_public_report_image_object(
-    '53500000-0000-0000-0000-000000000017/2d2d0000-0000-0000-0000-000000000017/a8ad0000-0000-0000-0000-000000000017.webp'
+    '2d2d0000-0000-0000-0000-000000000017/a8ad0000-0000-0000-0000-000000000017.webp'
   ),
   'public image helper accepts published report image'
 );
 
 select is(
   public.is_public_report_image_object(
-    '53500000-0000-0000-0000-000000000017/2d2d0000-0000-0000-0000-000000000018/a8ad0000-0000-0000-0000-000000000018.webp'
+    '2d2d0000-0000-0000-0000-000000000018/a8ad0000-0000-0000-0000-000000000018.webp'
   ),
   false,
   'public image helper returns false for private report image'
@@ -173,6 +173,15 @@ select is(
   'public_report_images hides private report images'
 );
 
-select * from finish();
+select is(
+  (
+    select storage_path like '53500000-0000-0000-0000-000000000017/%'
+    from public.public_report_images
+    limit 1
+  ),
+  false,
+  'public image paths do not expose reporter UUIDs'
+);
 
+select * from finish();
 rollback;
