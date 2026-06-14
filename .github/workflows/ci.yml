@@ -92,6 +92,14 @@ jobs:
         shell: bash
         run: supabase db reset
 
+      - name: Diagnose item image Storage tests
+        shell: bash
+        run: supabase test db supabase/tests/database/item_image_storage.test.sql
+
+      - name: Diagnose public report image tests
+        shell: bash
+        run: supabase test db supabase/tests/database/public_report_images.test.sql
+
       - name: Run database tests
         shell: bash
         run: supabase test db
