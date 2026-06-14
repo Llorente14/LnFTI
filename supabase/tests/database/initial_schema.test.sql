@@ -1,6 +1,6 @@
 begin;
 
-select plan(83);
+select plan(86);
 
 select has_type('public', 'application_role', 'application_role enum exists');
 select set_eq(
@@ -436,27 +436,6 @@ insert into public.claims (
 
 select throws_ok(
   $$
-    insert into public.claims (
-      id,
-      report_id,
-      claimant_id,
-      ownership_evidence_private,
-      claim_status
-    ) values (
-      '20000000-0000-0000-0000-000000000002',
-      '10000000-0000-0000-0000-000000000002',
-      '00000000-0000-0000-0000-000000000102',
-      'I also claim this item',
-      'APPROVED'
-    )
-  $$,
-  '23505',
-  null,
-  'more than one approved claim for one report is rejected'
-);
-
-select throws_ok(
-  $$
     insert into public.handovers (
       report_id,
       claim_id,
@@ -472,7 +451,7 @@ select throws_ok(
     )
   $$,
   'P0001',
-  'handover claim must belong to the report and be approved or completed',
+  'handover claim must belong to the report, match the recipient, and be approved or completed',
   'mismatched report and claim are rejected'
 );
 
@@ -493,7 +472,7 @@ select throws_ok(
     )
   $$,
   'P0001',
-  'handover claim must belong to the report and be approved or completed',
+  'handover claim must belong to the report, match the recipient, and be approved or completed',
   'PENDING claims cannot be handed over'
 );
 
@@ -514,8 +493,29 @@ select throws_ok(
     )
   $$,
   'P0001',
-  'handover claim must belong to the report and be approved or completed',
+  'handover claim must belong to the report, match the recipient, and be approved or completed',
   'REJECTED claims cannot be handed over'
+);
+
+select throws_ok(
+  $$
+    insert into public.handovers (
+      report_id,
+      claim_id,
+      verifier_id,
+      recipient_id,
+      handover_location
+    ) values (
+      '10000000-0000-0000-0000-000000000002',
+      '20000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000103',
+      '00000000-0000-0000-0000-000000000102',
+      'DPM Office'
+    )
+  $$,
+  'P0001',
+  'handover claim must belong to the report, match the recipient, and be approved or completed',
+  'unrelated recipient is rejected'
 );
 
 select lives_ok(
@@ -534,7 +534,18 @@ select lives_ok(
       'DPM Office'
     )
   $$,
-  'an APPROVED claim handover succeeds'
+  'correct claimant is accepted for an APPROVED claim handover'
+);
+
+select throws_ok(
+  $$
+    update public.handovers
+    set recipient_id = '00000000-0000-0000-0000-000000000102'
+    where claim_id = '20000000-0000-0000-0000-000000000001'
+  $$,
+  'P0001',
+  'handover claim must belong to the report, match the recipient, and be approved or completed',
+  'updating handover recipient to an unrelated profile is rejected'
 );
 
 select throws_ok(
@@ -555,7 +566,37 @@ select throws_ok(
   $$,
   '23505',
   null,
-  'a second handover for the same claim is rejected'
+  'a second handover for the same report is rejected'
+);
+
+select lives_ok(
+  $$
+    update public.claims
+    set claim_status = 'COMPLETED'
+    where id = '20000000-0000-0000-0000-000000000001'
+  $$,
+  'APPROVED claim can transition to COMPLETED'
+);
+
+select throws_ok(
+  $$
+    insert into public.claims (
+      id,
+      report_id,
+      claimant_id,
+      ownership_evidence_private,
+      claim_status
+    ) values (
+      '20000000-0000-0000-0000-000000000002',
+      '10000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000102',
+      'I also claim this item',
+      'APPROVED'
+    )
+  $$,
+  '23505',
+  null,
+  'a second successful claim for one report is rejected'
 );
 
 select lives_ok(
@@ -643,7 +684,7 @@ select ok(
   'updated_at changes when an eligible row is updated'
 );
 
-select has_index('public', 'claims', 'claims_one_approved_per_report_idx', 'approved claim partial unique index exists');
+select has_index('public', 'claims', 'claims_one_successful_per_report_idx', 'successful claim partial unique index exists');
 select has_index('public', 'claims', 'claims_id_report_id_key', 'claims id and report_id unique key backs handover integrity');
 select has_index('public', 'reports', 'reports_created_at_idx', 'reports created_at index exists');
 select has_index('public', 'reports', 'reports_event_at_idx', 'reports event_at index exists');
@@ -659,7 +700,7 @@ select has_index('public', 'claims', 'claims_report_id_idx', 'claims report_id i
 select has_index('public', 'claims', 'claims_claimant_id_idx', 'claims claimant_id index exists');
 select has_index('public', 'claims', 'claims_claim_status_idx', 'claims claim_status index exists');
 select has_index('public', 'claims', 'claims_created_at_idx', 'claims created_at index exists');
-select has_index('public', 'handovers', 'handovers_report_id_idx', 'handovers report_id index exists');
+select has_index('public', 'handovers', 'handovers_report_id_key', 'handovers report_id unique index exists');
 select has_index('public', 'handovers', 'handovers_claim_id_key', 'handovers claim_id unique index covers claim_id');
 select has_index('public', 'handovers', 'handovers_verifier_id_idx', 'handovers verifier_id index exists');
 select has_index('public', 'handovers', 'handovers_handover_at_idx', 'handovers handover_at index exists');
