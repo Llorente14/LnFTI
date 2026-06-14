@@ -69,3 +69,34 @@ jobs:
           if [ -d services/ai/tests ]; then
             python -m pytest services/ai/tests -q
           fi
+
+  database:
+    name: Database checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Supabase CLI
+        shell: bash
+        run: npm install --global supabase@2.106.0
+
+      - name: Start local Supabase
+        shell: bash
+        run: supabase start --log-level error > /dev/null
+
+      - name: Reset database from migrations
+        shell: bash
+        run: supabase db reset
+
+      - name: Run database tests
+        shell: bash
+        run: supabase test db
+
+      - name: Stop local Supabase
+        if: always()
+        shell: bash
+        run: supabase stop --no-backup
