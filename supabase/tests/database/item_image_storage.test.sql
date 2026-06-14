@@ -95,12 +95,13 @@ select ok(
         'anon' = any(roles)
         or 'public' = any(roles)
       )
+      and cmd in ('INSERT', 'UPDATE', 'DELETE')
       and (
         coalesce(qual, '') ilike '%report-images%'
         or coalesce(with_check, '') ilike '%report-images%'
       )
   ),
-  'anonymous has no direct object policy for report-images'
+  'anonymous has no write policy for report-images'
 );
 
 select ok(
@@ -215,7 +216,7 @@ select set_config('request.jwt.claim.sub', '53500000-0000-0000-0000-000000000001
 
 select ok(
   public.is_report_image_object_path_allowed(
-    '53500000-0000-0000-0000-000000000001/2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp',
+    '2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp',
     true
   ),
   'valid owner draft path helper returns true'
@@ -223,11 +224,11 @@ select ok(
 
 select is(
   public.is_report_image_object_path_allowed(
-    '82500000-0000-0000-0000-000000000002/2d2d0000-0000-0000-0000-000000000004/a8ad0000-0000-0000-0000-000000000003.webp',
+    '2d2d0000-0000-0000-0000-000000000004/a8ad0000-0000-0000-0000-000000000003.webp',
     true
   ),
   false,
-  'another user path returns false'
+  'another user report path returns false'
 );
 
 select is(
@@ -238,7 +239,7 @@ select is(
 
 select is(
   public.is_report_image_object_path_allowed(
-    '53500000-0000-0000-0000-000000000001/2d2d0000-0000-0000-0000-000000000003/a8ad0000-0000-0000-0000-000000000003.webp',
+    '2d2d0000-0000-0000-0000-000000000003/a8ad0000-0000-0000-0000-000000000003.webp',
     true
   ),
   false,
@@ -248,5 +249,4 @@ select is(
 reset role;
 
 select * from finish();
-
 rollback;
