@@ -1,6 +1,6 @@
 begin;
 
-select plan(86);
+select plan(91);
 
 select has_type('public', 'application_role', 'application_role enum exists');
 select set_eq(
@@ -153,7 +153,6 @@ select ok(
 );
 select fk_ok('public', 'handovers', 'verifier_id', 'public', 'profiles', 'id', 'handovers verifier_id references profiles');
 select fk_ok('public', 'handovers', 'recipient_id', 'public', 'profiles', 'id', 'handovers recipient_id references profiles');
-select fk_ok('public', 'audit_logs', 'actor_id', 'public', 'profiles', 'id', 'audit_logs actor_id references profiles');
 select fk_ok('public', 'export_jobs', 'requested_by', 'public', 'profiles', 'id', 'export_jobs requested_by references profiles');
 
 select set_eq(
@@ -252,12 +251,25 @@ insert into auth.users (
     '{}'::jsonb,
     now(),
     now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000104',
+    'authenticated',
+    'authenticated',
+    'audit-actor@example.test',
+    '',
+    now(),
+    '{}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
   );
 
 insert into public.profiles (id, role, display_name, student_identifier) values
   ('00000000-0000-0000-0000-000000000101', 'student', 'Student One', 'NIM001'),
   ('00000000-0000-0000-0000-000000000102', 'student', 'Student Two', 'NIM002'),
-  ('00000000-0000-0000-0000-000000000103', 'verifier', 'Verifier One', null);
+  ('00000000-0000-0000-0000-000000000103', 'verifier', 'Verifier One', null),
+  ('00000000-0000-0000-0000-000000000104', 'verifier', 'Historical Audit Actor', null);
 
 select lives_ok(
   $$
@@ -616,6 +628,67 @@ select lives_ok(
     )
   $$,
   'audit_logs accepts insert'
+);
+
+select lives_ok(
+  $$
+    insert into public.audit_logs (
+      actor_id,
+      action,
+      entity_type,
+      entity_id,
+      metadata
+    ) values (
+      '00000000-0000-0000-0000-000000000104',
+      'test.audit.historical_actor',
+      'profile',
+      '00000000-0000-0000-0000-000000000104',
+      '{"historical": true}'::jsonb
+    )
+  $$,
+  'audit log accepts dedicated historical actor profile UUID'
+);
+
+select lives_ok(
+  $$ delete from public.profiles where id = '00000000-0000-0000-0000-000000000104' $$,
+  'dedicated actor profile can be deleted'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.audit_logs
+    where action = 'test.audit.historical_actor'
+  ),
+  'audit log still exists after actor profile deletion'
+);
+
+select is(
+  (
+    select actor_id
+    from public.audit_logs
+    where action = 'test.audit.historical_actor'
+  ),
+  '00000000-0000-0000-0000-000000000104'::uuid,
+  'audit actor_id remains the original historical UUID'
+);
+
+select throws_ok(
+  $$
+    update public.audit_logs
+    set metadata = '{"changed": true}'::jsonb
+    where action = 'test.audit.historical_actor'
+  $$,
+  'P0001',
+  'audit_logs is append-only',
+  'historical audit log direct update is rejected'
+);
+
+select throws_ok(
+  $$ delete from public.audit_logs where action = 'test.audit.historical_actor' $$,
+  'P0001',
+  'audit_logs is append-only',
+  'historical audit log direct delete is rejected'
 );
 
 select throws_ok(
