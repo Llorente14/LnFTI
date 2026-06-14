@@ -97,8 +97,6 @@ from public, anon, authenticated;
 grant execute on function public.is_report_image_object_path_allowed(text, boolean)
 to authenticated;
 
-alter table storage.objects enable row level security;
-
 drop policy if exists storage_report_images_insert_verified_owner_editable
 on storage.objects;
 
