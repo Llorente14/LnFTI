@@ -141,6 +141,7 @@ test("image path parser rejects prefix tricks and malformed IDs", () => {
   assert.equal(imagePath.parseReportImagePath(validImagePath)?.reportId, "2d2d0000-0000-0000-0000-000000000002");
   assert.equal(imagePath.parseReportImagePath(`${validImagePath}/extra`), null);
   assert.equal(imagePath.parseReportImagePath("53500000-0000-0000-0000-000000000001/not-a-uuid/photo.webp"), null);
+  assert.throws(() => validation.reportIdSchema.parse("not-a-uuid"), /ID laporan/);
 });
 
 test("finalization metadata enforces sort order shape and alt text length", () => {
