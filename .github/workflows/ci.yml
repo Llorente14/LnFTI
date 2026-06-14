@@ -106,12 +106,17 @@ jobs:
           echo "::add-mask::$ANON_KEY"
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "APP_ORIGIN=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "RUN_SUPABASE_AUTH_INTEGRATION=1" >> "$GITHUB_ENV"
           echo "NEXT_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
 
       - name: Install web dependencies for auth integration
         shell: bash
         run: npm ci --prefix apps/web
+
+      - name: Install Playwright browser
+        shell: bash
+        run: npm --prefix apps/web exec playwright install --with-deps chromium
 
       - name: Build web for auth integration
         shell: bash
