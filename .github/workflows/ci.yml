@@ -100,9 +100,17 @@ jobs:
         shell: bash
         run: supabase test db supabase/tests/database/public_report_images.test.sql
 
-      - name: Diagnose public image helper tests
+      - name: Diagnose malformed public image paths
         shell: bash
-        run: supabase test db supabase/tests/database/public_report_image_helper.test.sql
+        run: supabase test db supabase/tests/database/public_report_image_helper_malformed.test.sql
+
+      - name: Diagnose published public image helper
+        shell: bash
+        run: supabase test db supabase/tests/database/public_report_image_helper_public.test.sql
+
+      - name: Diagnose private public image helper
+        shell: bash
+        run: supabase test db supabase/tests/database/public_report_image_helper_private.test.sql
 
       - name: Diagnose public image privacy tests
         shell: bash
