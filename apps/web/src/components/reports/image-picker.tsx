@@ -42,6 +42,13 @@ export function ImagePicker({ images, onChange, itemName }: ImagePickerProps) {
     };
   }, []);
 
+  function discardPendingPreviews(pendingImages: SelectedReportImage[]) {
+    pendingImages.forEach((image) => {
+      URL.revokeObjectURL(image.previewUrl);
+      previewUrls.current.delete(image.previewUrl);
+    });
+  }
+
   function addFiles(fileList: FileList | null) {
     setError("");
 
@@ -66,6 +73,7 @@ export function ImagePicker({ images, onChange, itemName }: ImagePickerProps) {
       });
 
       if (!validation.success) {
+        discardPendingPreviews(nextImages);
         setError(validation.error.issues[0]?.message ?? "File gambar tidak valid.");
         return;
       }
