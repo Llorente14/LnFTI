@@ -19,6 +19,8 @@ LNFTI combines PostgreSQL grants with Row Level Security. RLS limits rows, while
 
 Anonymous browsing uses `public.public_reports`. The view excludes reporter identifiers, private item characteristics, exact location details, and review fields. The base `reports` table is never granted to `anon`.
 
+Public image browsing uses `public.public_report_images` plus a narrow Storage `SELECT` policy for `report-images` objects already attached to `PUBLISHED` or `MATCHING` reports. The bucket remains private, and pages generate short-lived signed URLs rather than public URLs.
+
 ## Workflow writes
 
 Students receive only the columns needed for report and claim input. They cannot set review actors, publish timestamps, custody decisions, claim decisions, or audit records.
