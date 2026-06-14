@@ -96,9 +96,17 @@ jobs:
         shell: bash
         run: supabase test db supabase/tests/database/item_image_storage.test.sql
 
-      - name: Diagnose public report image tests
+      - name: Diagnose public image structure tests
         shell: bash
         run: supabase test db supabase/tests/database/public_report_images.test.sql
+
+      - name: Diagnose public image helper tests
+        shell: bash
+        run: supabase test db supabase/tests/database/public_report_image_helper.test.sql
+
+      - name: Diagnose public image privacy tests
+        shell: bash
+        run: supabase test db supabase/tests/database/public_report_image_privacy.test.sql
 
       - name: Run database tests
         shell: bash
