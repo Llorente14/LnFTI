@@ -25,6 +25,8 @@ const eventAtSchema = trimmedString.refine((value) => {
   return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
 }, "Waktu kejadian wajib valid dan tidak boleh di masa depan.");
 
+export const reportIdSchema = z.string().uuid("ID laporan tidak valid.");
+
 export const reportFormSchema = z.object({
   reportType: z.enum(REPORT_TYPES, { message: "Pilih jenis laporan." }),
   itemName: trimmedString
