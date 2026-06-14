@@ -185,9 +185,9 @@ select set_eq(
   'RLS is enabled on all application tables'
 );
 
-select is(
-  (
-    select count(*)::integer
+select results_eq(
+  $$
+    select tablename, policyname, cmd
     from pg_policies
     where schemaname = 'public'
       and tablename in (
@@ -199,9 +199,10 @@ select is(
         'audit_logs',
         'export_jobs'
       )
-  ),
-  0,
-  'no application RLS policies exist yet'
+    order by tablename, policyname
+  $$,
+  $$ values ('profiles'::name, 'profiles_select_own'::name, 'SELECT'::text) $$,
+  'only the LNFTI-13 own-profile SELECT policy exists'
 );
 
 insert into auth.users (
@@ -220,11 +221,11 @@ insert into auth.users (
     '00000000-0000-0000-0000-000000000101',
     'authenticated',
     'authenticated',
-    'student1@example.test',
+    'student.535240101@stu.untar.ac.id',
     '',
     now(),
     '{}'::jsonb,
-    '{}'::jsonb,
+    '{"full_name": "Student One", "nim": "535240101"}'::jsonb,
     now(),
     now()
   ),
@@ -232,11 +233,11 @@ insert into auth.users (
     '00000000-0000-0000-0000-000000000102',
     'authenticated',
     'authenticated',
-    'student2@example.test',
+    'student.825250102@stu.untar.ac.id',
     '',
     now(),
     '{}'::jsonb,
-    '{}'::jsonb,
+    '{"full_name": "Student Two", "nim": "825250102"}'::jsonb,
     now(),
     now()
   ),
@@ -244,11 +245,11 @@ insert into auth.users (
     '00000000-0000-0000-0000-000000000103',
     'authenticated',
     'authenticated',
-    'verifier@example.test',
+    'verifier.535240103@stu.untar.ac.id',
     '',
     now(),
     '{}'::jsonb,
-    '{}'::jsonb,
+    '{"full_name": "Verifier One", "nim": "535240103"}'::jsonb,
     now(),
     now()
   ),
@@ -256,20 +257,14 @@ insert into auth.users (
     '00000000-0000-0000-0000-000000000104',
     'authenticated',
     'authenticated',
-    'audit-actor@example.test',
+    'historical.825250104@stu.untar.ac.id',
     '',
     now(),
     '{}'::jsonb,
-    '{}'::jsonb,
+    '{"full_name": "Historical Audit Actor", "nim": "825250104"}'::jsonb,
     now(),
     now()
   );
-
-insert into public.profiles (id, role, display_name, student_identifier) values
-  ('00000000-0000-0000-0000-000000000101', 'student', 'Student One', 'NIM001'),
-  ('00000000-0000-0000-0000-000000000102', 'student', 'Student Two', 'NIM002'),
-  ('00000000-0000-0000-0000-000000000103', 'verifier', 'Verifier One', null),
-  ('00000000-0000-0000-0000-000000000104', 'verifier', 'Historical Audit Actor', null);
 
 select lives_ok(
   $$
