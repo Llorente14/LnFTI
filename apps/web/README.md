@@ -44,15 +44,23 @@ Registration accepts UNTAR FTI student identities:
 
 The first name is normalized from the first token in the full name, lowercased, and stripped to `a-z`. Example: `Axel Chrisdy` with `535240143` becomes `axel.535240143@stu.untar.ac.id`.
 
-Local Supabase has email confirmation disabled in `supabase/config.toml`, so a valid signup may immediately create a usable session. Hosted projects should enable email confirmation and configure:
+Local Supabase has email confirmation enabled in `supabase/config.toml`, and Mailpit receives local confirmation messages. Hosted projects should enable email confirmation and configure:
 
 - Email/password provider enabled.
 - Site URL set to the deployed app URL.
 - Redirect URL for `/auth/confirm`.
-- Confirmation template using Supabase `token_hash` links with `type=signup` or `type=email`.
+- Confirmation template using `TokenHash`, `RedirectTo`, and `type=email`.
 - SMTP provider before production launch.
 
 The confirmation route rejects invite, magiclink, recovery, and email-change tokens. Recovery tokens are not exchanged into a profile session.
+
+Hosted confirmation template body:
+
+```html
+<a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">Konfirmasi akun</a>
+```
+
+`RedirectTo` comes from the server-side `emailRedirectTo` value and already contains the sanitized `next` path.
 
 Private pages under `/me/*`, `/report/new`, and `/admin/*` redirect unauthenticated users to `/login?next=...`. Server components re-check the user with Supabase `getUser()`.
 
@@ -67,6 +75,12 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local-anon-or-publishable-key> \
 APP_ORIGIN=http://127.0.0.1:3000 \
 NEXT_APP_URL=http://127.0.0.1:3000 \
+MAILPIT_URL=http://127.0.0.1:54324 \
+SUPABASE_DB_HOST=127.0.0.1 \
+SUPABASE_DB_PORT=54322 \
+SUPABASE_DB_USER=postgres \
+SUPABASE_DB_PASSWORD=postgres \
+SUPABASE_DB_NAME=postgres \
 npm run test:auth-integration
 ```
 
