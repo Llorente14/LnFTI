@@ -53,7 +53,7 @@ const baseReport = {
 };
 
 const validImagePath =
-  "53500000-0000-0000-0000-000000000001/2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp";
+  "2d2d0000-0000-0000-0000-000000000002/a8ad0000-0000-0000-0000-000000000003.webp";
 
 test("valid LOST report passes validation", () => {
   const parsed = validation.reportFormSchema.parse(baseReport);
@@ -125,22 +125,22 @@ test("image above 5 MiB fails", () => {
   );
 });
 
-test("generated object path uses user ID, report ID, and UUID-safe extension", () => {
+test("generated object path uses report ID and UUID-safe extension without reporter ID", () => {
   assert.equal(
     imagePath.buildReportImagePath({
-      userId: "53500000-0000-0000-0000-000000000001",
       reportId: "2d2d0000-0000-0000-0000-000000000002",
       objectId: "a8ad0000-0000-0000-0000-000000000003",
       mimeType: "image/webp",
     }),
     validImagePath,
   );
+  assert.doesNotMatch(validImagePath, /53500000/);
 });
 
-test("image path parser rejects prefix tricks and malformed IDs", () => {
+test("image path parser rejects extra segments and malformed IDs", () => {
   assert.equal(imagePath.parseReportImagePath(validImagePath)?.reportId, "2d2d0000-0000-0000-0000-000000000002");
-  assert.equal(imagePath.parseReportImagePath(`${validImagePath}/extra`), null);
-  assert.equal(imagePath.parseReportImagePath("53500000-0000-0000-0000-000000000001/not-a-uuid/photo.webp"), null);
+  assert.equal(imagePath.parseReportImagePath(`53500000-0000-0000-0000-000000000001/${validImagePath}`), null);
+  assert.equal(imagePath.parseReportImagePath("not-a-uuid/photo.webp"), null);
   assert.throws(() => validation.reportIdSchema.parse("not-a-uuid"), /ID laporan/);
 });
 
