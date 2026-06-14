@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import {
@@ -23,8 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type FieldErrors = Partial<Record<keyof ReportFormValues | "images", string>>;
 
-const initialValues: ReportFormValues = {
-  reportType: "LOST",
+const baseInitialValues: Omit<ReportFormValues, "reportType"> = {
   itemName: "",
   category: "Lainnya",
   publicDescription: "",
@@ -41,7 +40,12 @@ function fieldError(errors: FieldErrors, name: keyof FieldErrors) {
 
 export function ReportForm() {
   const router = useRouter();
-  const [values, setValues] = useState<ReportFormValues>(initialValues);
+  const searchParams = useSearchParams();
+  const requestedType = searchParams.get("type")?.toUpperCase();
+  const [values, setValues] = useState<ReportFormValues>(() => ({
+    ...baseInitialValues,
+    reportType: requestedType === "FOUND" ? "FOUND" : "LOST",
+  }));
   const [images, setImages] = useState<SelectedReportImage[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState("");
@@ -123,7 +127,6 @@ export function ReportForm() {
 
       for (const [index, image] of images.entries()) {
         const storagePath = buildReportImagePath({
-          userId: draft.userId,
           reportId: draft.reportId,
           mimeType: image.file.type,
         });
