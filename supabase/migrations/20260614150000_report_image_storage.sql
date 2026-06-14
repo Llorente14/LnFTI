@@ -139,5 +139,6 @@ for delete
 to authenticated
 using (
   bucket_id = 'report-images'
+  and public.is_verified_student()
   and public.is_report_image_object_path_allowed(name, true)
 );
