@@ -173,3 +173,21 @@ npm run test:auth-integration
 The integration suite verifies Supabase profile creation, pending email state, Mailpit confirmation link exchange, verified profile state, browser registration, SSR cookies, profile reload, app login, invalid-login generic error, logout, unauthenticated redirect, and duplicate email/NIM generic error behavior.
 
 Remote database push was not performed for LNFTI-13.
+
+## LNFTI-15 Report Image Storage
+
+Migration:
+
+```text
+supabase/migrations/20260614150000_report_image_storage.sql
+```
+
+This migration creates the private `report-images` Storage bucket, caps files at 5 MiB, allows only JPEG/PNG/WebP MIME types, and adds object policies for owner upload/delete plus owner/verifier/admin read access. Direct anonymous reads and object updates are not allowed.
+
+Report image object paths must use:
+
+```text
+<user_id>/<report_id>/<object_uuid>.<extension>
+```
+
+`public.report_images.storage_path` stores this object path, not a public URL. Upload UI remains deferred to LNFTI-16. Public image delivery remains deferred to LNFTI-17. Remote database push was not performed for LNFTI-15.
