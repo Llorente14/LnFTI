@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/server";
 import { REPORT_IMAGE_BUCKET } from "@/lib/reports/constants";
 import { parseReportImagePath } from "@/lib/reports/image-path";
 import {
+  reportIdSchema,
   reportImageFinalizeSchema,
   reportSubmissionSchema,
   type ReportFormValues,
@@ -78,14 +79,15 @@ export async function finalizeReportSubmissionAction(
   images: ReportImageFinalizeInput[],
 ): Promise<ActionResult> {
   const user = await requireUser("/report/new");
+  const parsedReportId = reportIdSchema.safeParse(reportId);
   const parsedImages = reportImageFinalizeSchema.safeParse(images);
 
-  if (!parsedImages.success) {
+  if (!parsedReportId.success || !parsedImages.success) {
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
   }
 
   const normalizedUserId = user.id.toLowerCase();
-  const normalizedReportId = reportId.toLowerCase();
+  const normalizedReportId = parsedReportId.data.toLowerCase();
   const seenPaths = new Set<string>();
 
   for (const [index, image] of parsedImages.data.entries()) {
@@ -108,7 +110,7 @@ export async function finalizeReportSubmissionAction(
   const { data: report, error: reportError } = await supabase
     .from("reports")
     .select("id, reporter_id, report_status")
-    .eq("id", reportId)
+    .eq("id", normalizedReportId)
     .eq("reporter_id", user.id)
     .eq("report_status", "DRAFT")
     .maybeSingle();
@@ -118,7 +120,7 @@ export async function finalizeReportSubmissionAction(
   }
 
   if (parsedImages.data.length > 0) {
-    const folderPath = `${user.id}/${reportId}`;
+    const folderPath = `${normalizedUserId}/${normalizedReportId}`;
     const { data: storedObjects, error: storageError } = await supabase.storage
       .from(REPORT_IMAGE_BUCKET)
       .list(folderPath, { limit: 10 });
@@ -137,7 +139,7 @@ export async function finalizeReportSubmissionAction(
 
     const { error: imageError } = await supabase.from("report_images").insert(
       parsedImages.data.map((image) => ({
-        report_id: reportId,
+        report_id: normalizedReportId,
         storage_path: image.storagePath,
         alt_text: image.altText || null,
         sort_order: image.sortOrder,
@@ -145,7 +147,7 @@ export async function finalizeReportSubmissionAction(
     );
 
     if (imageError) {
-      await cleanupDraftReportAction(reportId);
+      await cleanupDraftReportAction(normalizedReportId);
       return { status: "error", message: GENERIC_CLEANUP_ERROR };
     }
   }
@@ -153,14 +155,14 @@ export async function finalizeReportSubmissionAction(
   const { data: finalizedReport, error: updateError } = await supabase
     .from("reports")
     .update({ report_status: "PENDING_REVIEW" })
-    .eq("id", reportId)
+    .eq("id", normalizedReportId)
     .eq("reporter_id", user.id)
     .eq("report_status", "DRAFT")
     .select("id")
     .single();
 
   if (updateError || !finalizedReport) {
-    await cleanupDraftReportAction(reportId);
+    await cleanupDraftReportAction(normalizedReportId);
     return { status: "error", message: GENERIC_CLEANUP_ERROR };
   }
 
@@ -171,9 +173,19 @@ export async function finalizeReportSubmissionAction(
 
 export async function cleanupDraftReportAction(reportId: string): Promise<ActionResult> {
   const user = await requireUser("/report/new");
+  const parsedReportId = reportIdSchema.safeParse(reportId);
+
+  if (!parsedReportId.success) {
+    return { status: "error", message: GENERIC_CLEANUP_ERROR };
+  }
+
+  const normalizedReportId = parsedReportId.data.toLowerCase();
   const supabase = await createClient();
 
-  const { error: imageError } = await supabase.from("report_images").delete().eq("report_id", reportId);
+  const { error: imageError } = await supabase
+    .from("report_images")
+    .delete()
+    .eq("report_id", normalizedReportId);
 
   if (imageError) {
     safeCleanupLog("Report image metadata cleanup failed.");
@@ -182,7 +194,7 @@ export async function cleanupDraftReportAction(reportId: string): Promise<Action
   const { error: reportError } = await supabase
     .from("reports")
     .delete()
-    .eq("id", reportId)
+    .eq("id", normalizedReportId)
     .eq("reporter_id", user.id)
     .eq("report_status", "DRAFT");
 
