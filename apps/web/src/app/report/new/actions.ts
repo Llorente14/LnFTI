@@ -3,8 +3,14 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth/server";
+import { REPORT_IMAGE_BUCKET } from "@/lib/reports/constants";
+import { parseReportImagePath } from "@/lib/reports/image-path";
+import {
+  reportImageFinalizeSchema,
+  reportSubmissionSchema,
+  type ReportFormValues,
+} from "@/lib/reports/validation";
 import { createClient } from "@/lib/supabase/server";
-import { reportFormSchema, type ReportFormValues } from "@/lib/reports/validation";
 
 type ActionResult<T extends object | void = void> =
   | (T extends void ? { status: "success" } : { status: "success" } & T)
@@ -29,7 +35,7 @@ export async function createDraftReportAction(
   values: ReportFormValues,
 ): Promise<ActionResult<{ reportId: string; userId: string; itemName: string }>> {
   const user = await requireUser("/report/new");
-  const parsed = reportFormSchema.safeParse(values);
+  const parsed = reportSubmissionSchema.safeParse(values);
 
   if (!parsed.success) {
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
@@ -72,15 +78,30 @@ export async function finalizeReportSubmissionAction(
   images: ReportImageFinalizeInput[],
 ): Promise<ActionResult> {
   const user = await requireUser("/report/new");
+  const parsedImages = reportImageFinalizeSchema.safeParse(images);
 
-  if (images.length > 3) {
+  if (!parsedImages.success) {
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
   }
 
-  const pathPrefix = `${user.id}/${reportId}/`;
+  const normalizedUserId = user.id.toLowerCase();
+  const normalizedReportId = reportId.toLowerCase();
+  const seenPaths = new Set<string>();
 
-  if (images.some((image, index) => image.sortOrder !== index + 1 || !image.storagePath.startsWith(pathPrefix))) {
-    return { status: "error", message: GENERIC_SUBMIT_ERROR };
+  for (const [index, image] of parsedImages.data.entries()) {
+    const parsedPath = parseReportImagePath(image.storagePath);
+
+    if (
+      image.sortOrder !== index + 1
+      || !parsedPath
+      || parsedPath.userId !== normalizedUserId
+      || parsedPath.reportId !== normalizedReportId
+      || seenPaths.has(image.storagePath)
+    ) {
+      return { status: "error", message: GENERIC_SUBMIT_ERROR };
+    }
+
+    seenPaths.add(image.storagePath);
   }
 
   const supabase = await createClient();
@@ -96,9 +117,26 @@ export async function finalizeReportSubmissionAction(
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
   }
 
-  if (images.length > 0) {
+  if (parsedImages.data.length > 0) {
+    const folderPath = `${user.id}/${reportId}`;
+    const { data: storedObjects, error: storageError } = await supabase.storage
+      .from(REPORT_IMAGE_BUCKET)
+      .list(folderPath, { limit: 10 });
+
+    if (storageError) {
+      return { status: "error", message: GENERIC_SUBMIT_ERROR };
+    }
+
+    const storedPaths = new Set(
+      (storedObjects ?? []).map((object) => `${folderPath}/${object.name}`),
+    );
+
+    if (parsedImages.data.some((image) => !storedPaths.has(image.storagePath))) {
+      return { status: "error", message: GENERIC_SUBMIT_ERROR };
+    }
+
     const { error: imageError } = await supabase.from("report_images").insert(
-      images.map((image) => ({
+      parsedImages.data.map((image) => ({
         report_id: reportId,
         storage_path: image.storagePath,
         alt_text: image.altText || null,
