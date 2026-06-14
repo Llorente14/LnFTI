@@ -133,6 +133,23 @@ maybeTest("auth integration protects private routes without session", async (t) 
 
   assert.equal(response.status, 307);
   assert.match(response.headers.get("location") ?? "", /\/login\?next=%2Fme%2Fprofile/);
+
+  const spoofedConfirmResponse = await fetch(
+    `${appUrl}/auth/confirm?token_hash=bad-token&type=recovery&next=/me/profile`,
+    {
+      redirect: "manual",
+      headers: {
+        "x-forwarded-host": "evil.example",
+        "x-forwarded-proto": "https",
+      },
+    },
+  );
+
+  assert.equal(spoofedConfirmResponse.status, 307);
+  assert.equal(
+    spoofedConfirmResponse.headers.get("location"),
+    `${appUrl}/login?message=confirmation_failed`,
+  );
 });
 
 maybeTest("browser auth session reaches profile, survives reload, and logs out", async () => {
@@ -141,12 +158,7 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
 
   const identity = uniqueIdentity("Browser", "825");
   const browser = await chromium.launch();
-  const page = await browser.newPage({
-    extraHTTPHeaders: {
-      "x-forwarded-host": "evil.example",
-      "x-forwarded-proto": "https",
-    },
-  });
+  const page = await browser.newPage();
 
   try {
     await page.goto(`${appUrl}/register?next=%2Fme%2Fprofile`);
