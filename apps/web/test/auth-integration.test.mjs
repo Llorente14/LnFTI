@@ -235,7 +235,7 @@ async function submitRegistration(page, identity) {
 async function assertProfileVisible(page, email, nim) {
   await page.getByRole("heading", { name: "Akun saya" }).waitFor();
   await page.getByText(email).waitFor();
-  await page.getByText(nim).waitFor();
+  await page.getByText(nim, { exact: true }).waitFor();
 }
 
 async function assertRegistrationError(page, message) {
