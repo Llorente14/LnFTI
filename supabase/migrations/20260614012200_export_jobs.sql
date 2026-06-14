@@ -33,6 +33,8 @@ create table public.export_jobs (
   )
 );
 
+alter table public.export_jobs enable row level security;
+
 create trigger export_jobs_set_updated_at
 before update on public.export_jobs
 for each row execute function public.set_updated_at();
