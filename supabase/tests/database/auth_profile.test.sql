@@ -1,6 +1,6 @@
 begin;
 
-select plan(31);
+select plan(33);
 
 select is(
   (
@@ -40,6 +40,44 @@ select is(
   ),
   array[24, 25]::smallint[],
   'allowed cohorts are 24 and 25'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from pg_proc
+    where oid in (
+      'public.normalize_auth_first_name(text)'::regprocedure,
+      'public.resolve_institutional_identity(text,text,text)'::regprocedure,
+      'public.on_auth_user_created()'::regprocedure,
+      'public.on_auth_user_email_confirmed()'::regprocedure,
+      'public.protect_institutional_email_change()'::regprocedure
+    )
+      and not (
+        'search_path=' = any(coalesce(proconfig, array[]::text[]))
+        or 'search_path=""' = any(coalesce(proconfig, array[]::text[]))
+      )
+  ),
+  0,
+  'new auth functions pin an empty search_path'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from pg_proc
+    cross join (values ('PUBLIC'), ('anon'), ('authenticated')) as roles(role_name)
+    where oid in (
+      'public.normalize_auth_first_name(text)'::regprocedure,
+      'public.resolve_institutional_identity(text,text,text)'::regprocedure,
+      'public.on_auth_user_created()'::regprocedure,
+      'public.on_auth_user_email_confirmed()'::regprocedure,
+      'public.protect_institutional_email_change()'::regprocedure
+    )
+      and has_function_privilege(roles.role_name, oid, 'EXECUTE')
+  ),
+  0,
+  'PUBLIC, anon, and authenticated cannot execute new auth functions directly'
 );
 
 select lives_ok(
