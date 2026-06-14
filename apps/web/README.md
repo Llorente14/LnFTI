@@ -28,6 +28,7 @@ Open `http://localhost:3000`.
 Use the Project URL and Publishable key from the Supabase Dashboard Connect dialog.
 Do not place secret keys or service-role keys in `NEXT_PUBLIC_*` variables.
 The app uses separate Supabase helpers for browser code and server-only code in `src/lib/supabase`.
+Database migration and local Supabase commands are documented in `../../docs/DATABASE.md`.
 
 ## Verification
 

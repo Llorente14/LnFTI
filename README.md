@@ -21,4 +21,8 @@ npm run dev
 Isi `.env.local` dengan Project URL dan Publishable key dari Supabase Dashboard.
 Jangan menyimpan secret key atau service-role key di repository atau variabel `NEXT_PUBLIC_*`.
 
+## Database
+
+Supabase local database setup, migrations, and pgTAP tests are documented in `docs/DATABASE.md`.
+
 Pekerjaan proyek dikelola pada Jira project `LNFTI`. Setiap branch, commit, dan pull request wajib menyertakan Jira key.
