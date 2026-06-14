@@ -2,18 +2,26 @@ import assert from "node:assert/strict";
 import { randomInt } from "node:crypto";
 import test from "node:test";
 import { chromium } from "@playwright/test";
+import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
 
 const enabled = process.env.RUN_SUPABASE_AUTH_INTEGRATION === "1";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const appUrl = process.env.NEXT_APP_URL;
+const mailpitUrl = process.env.MAILPIT_URL;
+const { Client } = pg;
 
 const maybeTest = enabled ? test : test.skip;
 
 function requireIntegrationEnv() {
   assert.ok(supabaseUrl, "NEXT_PUBLIC_SUPABASE_URL is required");
   assert.ok(supabaseKey, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required");
+}
+
+function requireAppEnv() {
+  assert.ok(appUrl, "NEXT_APP_URL is required");
+  assert.ok(mailpitUrl, "MAILPIT_URL is required");
 }
 
 function createSupabaseClient() {
@@ -51,6 +59,7 @@ maybeTest("auth integration signs up institutional user and derives profile", as
     email,
     password: passphrase,
     options: {
+      emailRedirectTo: `${appUrl ?? "http://127.0.0.1:3000"}/auth/confirm?next=%2Fme%2Fprofile`,
       data: {
         full_name: "Integration Student",
         nim,
@@ -60,29 +69,9 @@ maybeTest("auth integration signs up institutional user and derives profile", as
 
   assert.equal(signupError, null);
   assert.ok(signup.user);
+  assert.equal(signup.session, null);
 
-  if (!signup.session) {
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password: passphrase,
-    });
-
-    assert.equal(loginError, null);
-  }
-
-  const { data: userResult, error: userError } = await supabase.auth.getUser();
-  assert.equal(userError, null);
-  assert.equal(userResult.user?.email, email);
-
-  const { count, data: profiles, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role, display_name, nim, nim_prefix, program_study_code, cohort_year, verification_status", {
-      count: "exact",
-    })
-    .eq("id", userResult.user.id);
-
-  assert.equal(profileError, null);
-  assert.equal(count, 1);
+  const profiles = await selectProfilesByEmail(email);
   assert.equal(profiles.length, 1);
   assert.deepEqual(
     {
@@ -102,30 +91,11 @@ maybeTest("auth integration signs up institutional user and derives profile", as
       cohortYear: 2025,
     },
   );
-  assert.match(profiles[0].verification_status, /^(PENDING_EMAIL|VERIFIED)$/);
-
-  const secondClient = createSupabaseClient();
-  const { error: loginError } = await secondClient.auth.signInWithPassword({
-    email,
-    password: passphrase,
-  });
-  assert.equal(loginError, null);
-
-  const { data: firstSessionUser } = await secondClient.auth.getUser();
-  const { data: secondSessionUser } = await secondClient.auth.getUser();
-  assert.equal(firstSessionUser.user?.id, userResult.user.id);
-  assert.equal(secondSessionUser.user?.id, userResult.user.id);
-
-  await secondClient.auth.signOut();
-  const { data: signedOutUser } = await secondClient.auth.getUser();
-  assert.equal(signedOutUser.user, null);
+  assert.equal(profiles[0].verification_status, "PENDING_EMAIL");
 });
 
-maybeTest("auth integration protects private routes without session", async (t) => {
-  if (!appUrl) {
-    t.skip("NEXT_APP_URL not set; Next.js route integration skipped.");
-    return;
-  }
+maybeTest("auth integration protects private routes without session", async () => {
+  assert.ok(appUrl, "NEXT_APP_URL is required");
 
   const response = await fetch(`${appUrl}/me/profile`, {
     redirect: "manual",
@@ -153,7 +123,7 @@ maybeTest("auth integration protects private routes without session", async (t) 
 });
 
 maybeTest("browser auth session reaches profile, survives reload, and logs out", async () => {
-  assert.ok(appUrl, "NEXT_APP_URL is required");
+  requireAppEnv();
   requireIntegrationEnv();
 
   const identity = uniqueIdentity("Browser", "825");
@@ -169,6 +139,39 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
     await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
     await page.getByRole("button", { name: "Daftar" }).click();
 
+    await page.waitForURL("**/auth/check-email");
+    await page.goto(`${appUrl}/me/profile`);
+    await page.waitForURL("**/login?next=%2Fme%2Fprofile");
+
+    await assertProfileStatus(identity.email, "PENDING_EMAIL");
+
+    const confirmationUrl = await findConfirmationUrl(identity.email);
+    assert.match(confirmationUrl, /\/auth\/confirm\?/);
+    assert.match(confirmationUrl, /token_hash=/);
+    assert.match(confirmationUrl, /type=email/);
+
+    await page.goto(confirmationUrl);
+    await page.waitForURL("**/me/profile");
+    await assertProfileVisible(page, identity.email, identity.nim);
+    await assertProfileStatus(identity.email, "VERIFIED");
+
+    await page.reload();
+    await assertProfileVisible(page, identity.email, identity.nim);
+
+    await page.getByRole("button", { name: "Keluar" }).click();
+    await page.waitForURL("**/login");
+
+    await page.goto(`${appUrl}/me/profile`);
+    await page.waitForURL("**/login?next=%2Fme%2Fprofile");
+
+    await page.goto(`${appUrl}/login?next=%2Fme%2Fprofile`);
+    await page.getByLabel("Email institusional").fill(identity.email);
+    await page.getByLabel("Password").fill("wrong-password");
+    await page.getByRole("button", { name: "Masuk" }).click();
+    await page.getByText("Email atau password tidak valid.").waitFor();
+
+    await page.getByLabel("Password").fill(identity.passphrase);
+    await page.getByRole("button", { name: "Masuk" }).click();
     await page.waitForURL("**/me/profile");
     await assertProfileVisible(page, identity.email, identity.nim);
 
@@ -177,7 +180,6 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
 
     await page.getByRole("button", { name: "Keluar" }).click();
     await page.waitForURL("**/login");
-
     await page.goto(`${appUrl}/me/profile`);
     await page.waitForURL("**/login?next=%2Fme%2Fprofile");
   } finally {
@@ -195,6 +197,7 @@ maybeTest("browser registration duplicates use same safe generic message", async
     email: identity.email,
     password: identity.passphrase,
     options: {
+      emailRedirectTo: `${appUrl}/auth/confirm?next=%2Fme%2Fprofile`,
       data: {
         full_name: identity.fullName,
         nim: identity.nim,
@@ -240,4 +243,92 @@ async function assertProfileVisible(page, email, nim) {
 
 async function assertRegistrationError(page, message) {
   await page.getByText(message).waitFor();
+}
+
+async function withDatabase(callback) {
+  const client = new Client({
+    host: process.env.SUPABASE_DB_HOST ?? "127.0.0.1",
+    port: Number(process.env.SUPABASE_DB_PORT ?? "54322"),
+    user: process.env.SUPABASE_DB_USER ?? "postgres",
+    password: process.env.SUPABASE_DB_PASSWORD ?? "postgres",
+    database: process.env.SUPABASE_DB_NAME ?? "postgres",
+  });
+
+  await client.connect();
+  try {
+    return await callback(client);
+  } finally {
+    await client.end();
+  }
+}
+
+async function selectProfilesByEmail(email) {
+  return withDatabase(async (client) => {
+    const result = await client.query(
+      `
+        select
+          profiles.role::text as role,
+          profiles.display_name,
+          profiles.nim,
+          profiles.nim_prefix,
+          profiles.program_study_code,
+          profiles.cohort_year,
+          profiles.verification_status::text as verification_status
+        from auth.users
+        join public.profiles
+          on profiles.id = users.id
+        where users.email = $1
+      `,
+      [email],
+    );
+
+    return result.rows;
+  });
+}
+
+async function assertProfileStatus(email, expectedStatus) {
+  const rows = await selectProfilesByEmail(email);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].verification_status, expectedStatus);
+}
+
+async function findConfirmationUrl(email) {
+  const deadline = Date.now() + 30_000;
+
+  while (Date.now() < deadline) {
+    const messagesResponse = await fetch(`${mailpitUrl}/api/v1/messages?limit=50`);
+    assert.equal(messagesResponse.ok, true);
+
+    const mailbox = await messagesResponse.json();
+    const messages = mailbox.messages ?? mailbox.Messages ?? [];
+    const matchingMessage = messages.find((message) =>
+      JSON.stringify(message).toLowerCase().includes(email.toLowerCase()),
+    );
+
+    if (matchingMessage) {
+      const id = matchingMessage.ID ?? matchingMessage.Id ?? matchingMessage.id;
+      const messageResponse = await fetch(`${mailpitUrl}/api/v1/message/${id}`);
+      assert.equal(messageResponse.ok, true);
+
+      const message = await messageResponse.json();
+      const body = [
+        message.HTML,
+        message.Text,
+        message.HTMLBody,
+        message.TextBody,
+        message.Body,
+        JSON.stringify(message),
+      ].filter(Boolean).join("\n");
+      const match = body.match(/https?:\/\/[^"'<>\s]+\/auth\/confirm[^"'<>\s]+/);
+
+      if (match) {
+        return match[0].replaceAll("&amp;", "&");
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`Confirmation email not found for ${email}.`);
 }
