@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { sanitizeNextPath } from "@/lib/auth/validation";
 import { getPublicEnv } from "@/lib/env";
 
 type CookieToSet = {
@@ -32,7 +33,21 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (isProtectedPath(request.nextUrl.pathname) && (error || !data?.claims)) {
+    const pathWithQuery = sanitizeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`);
+    const redirectUrl = request.nextUrl.clone();
+
+    redirectUrl.pathname = "/login";
+    redirectUrl.search = `?next=${encodeURIComponent(pathWithQuery)}`;
+
+    return NextResponse.redirect(redirectUrl);
+  }
 
   return response;
+}
+
+function isProtectedPath(pathname: string): boolean {
+  return pathname.startsWith("/me/") || pathname === "/report/new" || pathname.startsWith("/admin");
 }

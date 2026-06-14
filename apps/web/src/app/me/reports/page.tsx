@@ -1,8 +1,11 @@
 import { PlaceholderPage } from "@/components/placeholder-page";
+import { requireUser } from "@/lib/auth/server";
 
 export const metadata = { title: "Laporan Saya" };
 
-export default function MyReportsPage() {
+export default async function MyReportsPage() {
+  await requireUser("/me/reports");
+
   return (
     <PlaceholderPage
       eyebrow="Student workspace"
