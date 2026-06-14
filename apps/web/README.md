@@ -95,6 +95,10 @@ npm test
 npm run build
 ```
 
-## Current scope
+## Report submission
 
-`LNFTI-13` adds institutional email registration, login, profile bootstrap, confirmation route, and minimal protected route handling. Broad role policies, report workflow, claim workflow, verifier dashboard, Storage, and AI integration remain separate tickets.
+`/report/new` is protected by Supabase Auth and lets verified students submit `LOST` or `FOUND` reports. Submitted reports are created as temporary `DRAFT` rows, optional images are uploaded to the private `report-images` bucket, image metadata is inserted, and the report is finalized as `PENDING_REVIEW`.
+
+Fields include report type, item name, category, public description, optional private characteristics, campus, building, location detail, event date/time, and up to three optional images. Supported image formats are JPEG, PNG, and WebP, with a 5 MiB limit per file. Private characteristics are for verification only and must not appear in public-facing previews.
+
+If upload or finalization fails, the app removes uploaded objects when possible, deletes image metadata, and deletes the temporary draft report. AI suggestions are not required for submission; future LNFTI-27 suggestions must remain editable. Public browsing remains LNFTI-17, DPM review remains LNFTI-18, and no remote `supabase db push` is performed for this flow.
