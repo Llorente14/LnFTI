@@ -1,13 +1,14 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { isAllowedRole, type ApplicationRole } from "@/lib/auth/role";
 import { DEFAULT_AUTH_REDIRECT, sanitizeNextPath } from "@/lib/auth/validation";
+import { createClient } from "@/lib/supabase/server";
 
 export type CurrentProfile = {
   id: string;
-  role: string;
+  role: ApplicationRole;
   display_name: string | null;
   nim: string | null;
   program_study_code: string | null;
@@ -41,16 +42,41 @@ export async function requireUser(nextPath: string = DEFAULT_AUTH_REDIRECT) {
   return user;
 }
 
-export async function getCurrentProfile(): Promise<CurrentProfile | null> {
+async function readOwnProfile(userId: string): Promise<CurrentProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
     .select("id, role, display_name, nim, program_study_code, cohort_year, verification_status")
-    .single();
+    .eq("id", userId)
+    .maybeSingle();
 
-  if (error) {
+  if (error || !data || !isAllowedRole(data.role, ["student", "verifier", "admin"])) {
     return null;
   }
 
   return data as CurrentProfile;
+}
+
+export async function getCurrentProfile(): Promise<CurrentProfile | null> {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return readOwnProfile(user.id);
+}
+
+export async function requireRole(
+  allowedRoles: readonly ApplicationRole[],
+  nextPath: string = DEFAULT_AUTH_REDIRECT,
+) {
+  const user = await requireUser(nextPath);
+  const profile = await readOwnProfile(user.id);
+
+  if (!profile || !allowedRoles.includes(profile.role)) {
+    notFound();
+  }
+
+  return { user, profile };
 }
