@@ -96,6 +96,10 @@ jobs:
         shell: bash
         run: supabase test db
 
+      - name: Run database lint
+        shell: bash
+        run: supabase db lint --level warning
+
       - name: Export local Supabase public env
         shell: bash
         run: |
@@ -109,6 +113,12 @@ jobs:
           echo "APP_ORIGIN=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "RUN_SUPABASE_AUTH_INTEGRATION=1" >> "$GITHUB_ENV"
           echo "NEXT_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
+          echo "MAILPIT_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_HOST=127.0.0.1" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_PORT=54322" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_USER=postgres" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_PASSWORD=postgres" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_NAME=postgres" >> "$GITHUB_ENV"
 
       - name: Install web dependencies for auth integration
         shell: bash

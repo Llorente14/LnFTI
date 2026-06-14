@@ -29,7 +29,11 @@ enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_signup = true
-enable_confirmations = false
+enable_confirmations = true
+
+[auth.email.template.confirmation]
+subject = "Konfirmasi email LnFTI"
+content_path = "./supabase/templates/confirmation.html"
 
 [storage]
 enabled = false
