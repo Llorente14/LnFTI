@@ -1,0 +1,1 @@
+"""LnFTI AI service package."""
