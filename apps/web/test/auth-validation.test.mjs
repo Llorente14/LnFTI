@@ -27,6 +27,7 @@ const {
   normalizeFirstName,
   parseNim,
   sanitizeNextPath,
+  validateInstitutionalEmail,
   validateInstitutionalIdentity,
 } = loadAuthExports();
 
@@ -118,6 +119,13 @@ test("rejects institutional email mismatches", () => {
       }),
     /nama\.NIM/,
   );
+});
+
+test("validates login institutional email format without full name", () => {
+  assert.equal(validateInstitutionalEmail("AXEL.535240143@STU.UNTAR.AC.ID"), "axel.535240143@stu.untar.ac.id");
+  assert.throws(() => validateInstitutionalEmail("axel.535240143@example.com"), /domain/);
+  assert.throws(() => validateInstitutionalEmail("axel.extra.535240143@stu.untar.ac.id"), /nama\.NIM/);
+  assert.throws(() => validateInstitutionalEmail("axel.123240143@stu.untar.ac.id"), /Prefix/);
 });
 
 test("rejects empty normalized first name and password mismatch", () => {

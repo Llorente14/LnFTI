@@ -1,8 +1,11 @@
 import { PlaceholderPage } from "@/components/placeholder-page";
+import { requireUser } from "@/lib/auth/server";
 
 export const metadata = { title: "Buat Laporan" };
 
-export default function NewReportPage() {
+export default async function NewReportPage() {
+  await requireUser("/report/new");
+
   return (
     <PlaceholderPage
       eyebrow="Authenticated route"

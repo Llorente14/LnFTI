@@ -100,7 +100,7 @@ export function buildInstitutionalEmail(fullName: string, nimValue: string): str
   return `${firstName}.${parsedNim.nim}@${INSTITUTIONAL_EMAIL_DOMAIN}`;
 }
 
-function normalizeInstitutionalEmail(value: string): string {
+export function normalizeInstitutionalEmail(value: string): string {
   const email = z.string().trim().min(1, "Email wajib diisi.").parse(value);
 
   if (email !== value) {
@@ -108,6 +108,28 @@ function normalizeInstitutionalEmail(value: string): string {
   }
 
   return email.toLowerCase();
+}
+
+export function validateInstitutionalEmail(value: string): string {
+  const email = normalizeInstitutionalEmail(value);
+  const [localPart, domain] = email.split("@");
+
+  if (!localPart || !domain || email.split("@").length !== 2) {
+    fail("Format email institusional tidak valid.");
+  }
+
+  if (domain !== INSTITUTIONAL_EMAIL_DOMAIN) {
+    fail("Email harus menggunakan domain stu.untar.ac.id.");
+  }
+
+  const localTokens = localPart.split(".");
+  if (localTokens.length !== 2 || !/^[a-z]+$/.test(localTokens[0] ?? "")) {
+    fail("Format email harus nama.NIM@stu.untar.ac.id.");
+  }
+
+  parseNim(localTokens[1] ?? "");
+
+  return email;
 }
 
 export function validateInstitutionalIdentity(input: {
@@ -120,7 +142,7 @@ export function validateInstitutionalIdentity(input: {
   const fullName = normalizeFullName(input.fullName);
   const firstName = normalizeFirstName(fullName);
   const parsedNim = parseNim(input.nim);
-  const email = normalizeInstitutionalEmail(input.email);
+  const email = validateInstitutionalEmail(input.email);
   const [localPart, domain] = email.split("@");
 
   if (!localPart || !domain || email.split("@").length !== 2) {
