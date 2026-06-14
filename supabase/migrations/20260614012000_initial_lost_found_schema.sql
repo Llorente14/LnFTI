@@ -126,9 +126,10 @@ begin
     from public.claims
     where claims.id = new.claim_id
       and claims.report_id = new.report_id
+      and claims.claimant_id = new.recipient_id
       and claims.claim_status in ('APPROVED', 'COMPLETED')
   ) then
-    raise exception 'handover claim must belong to the report and be approved or completed';
+    raise exception 'handover claim must belong to the report, match the recipient, and be approved or completed';
   end if;
 
   return new;
@@ -146,6 +147,7 @@ create table public.handovers (
   notes text null,
   created_at timestamptz not null default now(),
   unique (claim_id),
+  unique (report_id),
   foreign key (claim_id, report_id) references public.claims(id, report_id) on delete restrict
 );
 
@@ -164,12 +166,12 @@ before update on public.claims
 for each row execute function public.set_updated_at();
 
 create trigger handovers_ensure_claim_ready
-before insert or update of report_id, claim_id on public.handovers
+before insert or update of report_id, claim_id, recipient_id on public.handovers
 for each row execute function public.ensure_handover_claim_ready();
 
-create unique index claims_one_approved_per_report_idx
+create unique index claims_one_successful_per_report_idx
 on public.claims (report_id)
-where claim_status = 'APPROVED';
+where claim_status in ('APPROVED', 'COMPLETED');
 
 create index reports_created_at_idx on public.reports (created_at desc);
 create index reports_event_at_idx on public.reports (event_at desc);
@@ -190,7 +192,6 @@ create index claims_claimant_id_idx on public.claims (claimant_id);
 create index claims_claim_status_idx on public.claims (claim_status);
 create index claims_created_at_idx on public.claims (created_at desc);
 
-create index handovers_report_id_idx on public.handovers (report_id);
 create index handovers_verifier_id_idx on public.handovers (verifier_id);
 create index handovers_handover_at_idx on public.handovers (handover_at desc);
 
