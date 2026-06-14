@@ -31,4 +31,6 @@ The browser uses only the Supabase publishable/anon key. Service-role and secret
 
 ## Storage boundary
 
-This ticket protects `report_images` metadata only. Supabase Storage paths, file type/size limits, and object policies are handled by LNFTI-15.
+`LNFTI-15` adds a private `report-images` bucket and direct Storage object policies. Verified students can upload and delete only paths for their own `DRAFT` or `PENDING_REVIEW` reports. Verifier/admin roles can read objects only. Anonymous direct access, object updates, overwrite, upsert, rename, and move are denied.
+
+See `docs/STORAGE.md` for path format and metadata consistency rules.
