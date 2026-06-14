@@ -114,7 +114,7 @@ create or replace function public.normalize_auth_first_name(full_name text)
 returns text
 language plpgsql
 immutable
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   first_token text;
@@ -154,7 +154,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   trimmed_name text;
@@ -227,7 +227,7 @@ create or replace function public.on_auth_user_created()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   identity record;
@@ -272,7 +272,7 @@ create or replace function public.on_auth_user_email_confirmed()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 begin
   if old.email_confirmed_at is null and new.email_confirmed_at is not null then
@@ -291,7 +291,7 @@ create or replace function public.protect_institutional_email_change()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   profile_row public.profiles%rowtype;
