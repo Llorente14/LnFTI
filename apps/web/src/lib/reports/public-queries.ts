@@ -6,6 +6,8 @@ import {
   type PublicReportFilters,
   parsePublicReportFilters,
   type RawSearchParams,
+  toJakartaDayEndIso,
+  toJakartaDayStartIso,
 } from "@/lib/reports/public-filters";
 import { createClient } from "@/lib/supabase/server";
 
@@ -72,7 +74,7 @@ async function signReportImage(storagePath: string) {
   return data.signedUrl;
 }
 
-export async function getPublicReportImages(reportIds: string[]) {
+export async function getPublicReportImages(reportIds: string[], maxPerReport = 3) {
   const uniqueReportIds = Array.from(new Set(reportIds));
 
   if (uniqueReportIds.length === 0) {
@@ -91,7 +93,13 @@ export async function getPublicReportImages(reportIds: string[]) {
     return new Map<string, PublicReportImage[]>();
   }
 
-  const grouped = new Map<string, PublicReportImage[]>();
+  const selected: Array<{
+    report_id: string;
+    storage_path: string;
+    alt_text: string | null;
+    sort_order: number;
+  }> = [];
+  const perReportCount = new Map<string, number>();
 
   for (const image of data as Array<{
     report_id: string;
@@ -99,15 +107,29 @@ export async function getPublicReportImages(reportIds: string[]) {
     alt_text: string | null;
     sort_order: number;
   }>) {
-    const signedUrl = await signReportImage(image.storage_path);
-    const list = grouped.get(image.report_id) ?? [];
+    const currentCount = perReportCount.get(image.report_id) ?? 0;
 
-    list.push({
+    if (currentCount >= maxPerReport) {
+      continue;
+    }
+
+    selected.push(image);
+    perReportCount.set(image.report_id, currentCount + 1);
+  }
+
+  const signedImages = await Promise.all(
+    selected.map(async (image) => ({
       report_id: image.report_id,
       alt_text: image.alt_text,
       sort_order: image.sort_order,
-      signedUrl,
-    });
+      signedUrl: await signReportImage(image.storage_path),
+    })),
+  );
+  const grouped = new Map<string, PublicReportImage[]>();
+
+  for (const image of signedImages) {
+    const list = grouped.get(image.report_id) ?? [];
+    list.push(image);
     grouped.set(image.report_id, list);
   }
 
@@ -137,7 +159,7 @@ export async function getLatestPublicReports(limit = 6) {
   }
 
   const reports = data as PublicReport[];
-  const imagesByReport = await getPublicReportImages(reports.map((report) => report.id));
+  const imagesByReport = await getPublicReportImages(reports.map((report) => report.id), 1);
 
   return { reports: withThumbnails(reports, imagesByReport), queryFailed: false };
 }
@@ -164,8 +186,8 @@ export async function getPublicReports(params: RawSearchParams = {}): Promise<Pu
   if (filters.status) query = query.eq("report_status", filters.status);
   if (filters.campus) query = query.ilike("campus", toIlikePattern(filters.campus));
   if (filters.building) query = query.ilike("building", toIlikePattern(filters.building));
-  if (filters.dateFrom) query = query.gte("event_at", `${filters.dateFrom}T00:00:00.000Z`);
-  if (filters.dateTo) query = query.lte("event_at", `${filters.dateTo}T23:59:59.999Z`);
+  if (filters.dateFrom) query = query.gte("event_at", toJakartaDayStartIso(filters.dateFrom));
+  if (filters.dateTo) query = query.lte("event_at", toJakartaDayEndIso(filters.dateTo));
   if (filters.q) {
     const pattern = toIlikePattern(filters.q);
 
@@ -180,7 +202,7 @@ export async function getPublicReports(params: RawSearchParams = {}): Promise<Pu
   }
 
   const reports = data as PublicReport[];
-  const imagesByReport = await getPublicReportImages(reports.map((report) => report.id));
+  const imagesByReport = await getPublicReportImages(reports.map((report) => report.id), 1);
   const totalCount = count ?? 0;
 
   return {
@@ -206,10 +228,10 @@ export async function getPublicReportById(id: string) {
   }
 
   const report = data as PublicReport;
-  const imagesByReport = await getPublicReportImages([report.id]);
+  const imagesByReport = await getPublicReportImages([report.id], 3);
 
   return {
     ...report,
-    images: (imagesByReport.get(report.id) ?? []).slice(0, 3),
+    images: imagesByReport.get(report.id) ?? [],
   };
 }
