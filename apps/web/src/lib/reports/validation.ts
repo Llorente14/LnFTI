@@ -9,6 +9,7 @@ import {
 } from "@/lib/reports/constants";
 
 const trimmedString = z.string().trim();
+const explicitTimezonePattern = /(?:Z|[+-]\d{2}:\d{2})$/;
 
 const optionalTrimmedString = (maxLength: number) =>
   z
@@ -17,6 +18,12 @@ const optionalTrimmedString = (maxLength: number) =>
     .max(maxLength, `Maksimal ${maxLength} karakter.`)
     .optional()
     .transform((value) => (value ? value : null));
+
+const eventAtSchema = trimmedString.refine((value) => {
+  const date = new Date(value);
+
+  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
+}, "Waktu kejadian wajib valid dan tidak boleh di masa depan.");
 
 export const reportFormSchema = z.object({
   reportType: z.enum(REPORT_TYPES, { message: "Pilih jenis laporan." }),
@@ -31,11 +38,15 @@ export const reportFormSchema = z.object({
   campus: optionalTrimmedString(120),
   building: trimmedString.min(1, "Gedung wajib diisi.").max(120, "Gedung maksimal 120 karakter."),
   locationDetail: optionalTrimmedString(300),
+  eventAt: eventAtSchema,
+});
+
+export const reportSubmissionSchema = reportFormSchema.extend({
   eventAt: trimmedString.refine((value) => {
     const date = new Date(value);
 
-    return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
-  }, "Waktu kejadian wajib valid dan tidak boleh di masa depan."),
+    return explicitTimezonePattern.test(value) && !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
+  }, "Waktu kejadian wajib menyertakan zona waktu dan tidak boleh di masa depan."),
 });
 
 export type ReportFormValues = z.infer<typeof reportFormSchema>;
@@ -55,6 +66,16 @@ export const reportImageMetadataSchema = z.object({
 
 export const reportImagesSchema = z
   .array(reportImageMetadataSchema)
+  .max(REPORT_IMAGE_MAX_COUNT, "Maksimal tiga gambar per laporan.");
+
+export const reportImageFinalizeSchema = z
+  .array(
+    z.object({
+      storagePath: z.string().trim().min(1, "Path gambar wajib diisi."),
+      altText: z.string().trim().max(160, "Alt text maksimal 160 karakter."),
+      sortOrder: z.number().int().min(1).max(REPORT_IMAGE_MAX_COUNT),
+    }),
+  )
   .max(REPORT_IMAGE_MAX_COUNT, "Maksimal tiga gambar per laporan.");
 
 export type ReportImageMetadata = z.infer<typeof reportImageMetadataSchema>;
