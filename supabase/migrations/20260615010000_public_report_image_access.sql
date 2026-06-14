@@ -18,7 +18,7 @@ set search_path = ''
 as $$
 declare
   path_parts text[];
-  report_id uuid;
+  target_report_id uuid;
   current_user_id uuid;
 begin
   current_user_id := auth.uid();
@@ -45,12 +45,12 @@ begin
     return false;
   end if;
 
-  report_id := path_parts[1]::uuid;
+  target_report_id := path_parts[1]::uuid;
 
   return exists (
     select 1
     from public.reports as reports
-    where reports.id = report_id
+    where reports.id = target_report_id
       and reports.reporter_id = current_user_id
       and (
         not require_editable_report
@@ -103,7 +103,7 @@ set search_path = ''
 as $$
 declare
   path_parts text[];
-  report_id uuid;
+  target_report_id uuid;
 begin
   if object_name is null or object_name <> btrim(object_name) then
     return false;
@@ -123,7 +123,7 @@ begin
     return false;
   end if;
 
-  report_id := path_parts[1]::uuid;
+  target_report_id := path_parts[1]::uuid;
 
   return exists (
     select 1
@@ -131,7 +131,7 @@ begin
     join public.reports as reports
       on reports.id = report_images.report_id
     where report_images.storage_path = object_name
-      and report_images.report_id = report_id
+      and report_images.report_id = target_report_id
       and reports.report_status in (
         'PUBLISHED'::public.report_status,
         'MATCHING'::public.report_status
