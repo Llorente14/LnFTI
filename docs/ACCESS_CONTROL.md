@@ -9,7 +9,7 @@ LNFTI combines PostgreSQL grants with Row Level Security. RLS limits rows, while
 | `public_reports` | Read published/matching rows | Read published/matching rows | Read | Read |
 | `profiles` | None | Own profile | All profiles | All profiles |
 | `reports` | None | Own rows; create/edit draft or pending; delete own draft | Read all | Read all |
-| `report_images` | None | Metadata for own editable reports | Read all metadata | Read all metadata |
+| `report_images` | Safe public metadata view only | Metadata for own editable reports | Read all metadata | Read all metadata |
 | `claims` | None | Own claims; create pending claim; cancel own pending claim | Read all | Read all |
 | `handovers` | None | Rows where the student is recipient | Read all | Read all |
 | `audit_logs` | None | None | Read all | Read all |
@@ -19,7 +19,7 @@ LNFTI combines PostgreSQL grants with Row Level Security. RLS limits rows, while
 
 Anonymous browsing uses `public.public_reports`. The view excludes reporter identifiers, private item characteristics, exact location details, and review fields. The base `reports` table is never granted to `anon`.
 
-Public image browsing uses `public.public_report_images` plus a narrow Storage `SELECT` policy for `report-images` objects already attached to `PUBLISHED` or `MATCHING` reports. The bucket remains private, and pages generate short-lived signed URLs rather than public URLs.
+Public image browsing uses `public.public_report_images` plus a narrow Storage `SELECT` policy for `report-images` objects already attached to `PUBLISHED` or `MATCHING` reports. The bucket remains private, pages generate short-lived signed URLs rather than public URLs, and object paths contain report/object UUIDs only—not reporter UUIDs.
 
 ## Workflow writes
 
@@ -33,6 +33,6 @@ The browser uses only the Supabase publishable/anon key. Service-role and secret
 
 ## Storage boundary
 
-`LNFTI-15` adds a private `report-images` bucket and direct Storage object policies. Verified students can upload and delete only paths for their own `DRAFT` or `PENDING_REVIEW` reports. Verifier/admin roles can read objects only. Anonymous direct access, object updates, overwrite, upsert, rename, and move are denied.
+`LNFTI-15` adds a private `report-images` bucket and direct Storage object policies. Verified students can upload and delete only paths for their own `DRAFT` or `PENDING_REVIEW` reports. Verifier/admin roles can read objects only. Anonymous users can read only objects attached to public reports; anonymous writes, object updates, overwrite, upsert, rename, and move are denied.
 
 See `docs/STORAGE.md` for path format and metadata consistency rules.
