@@ -102,3 +102,11 @@ npm run build
 Fields include report type, item name, category, public description, optional private characteristics, campus, building, location detail, event date/time, and up to three optional images. Supported image formats are JPEG, PNG, and WebP, with a 5 MiB limit per file. Private characteristics are for verification only and must not appear in public-facing previews.
 
 If upload or finalization fails, the app removes uploaded objects when possible, deletes image metadata, and deletes the temporary draft report. AI suggestions are not required for submission; future LNFTI-27 suggestions must remain editable. Public browsing remains LNFTI-17, DPM review remains LNFTI-18, and no remote `supabase db push` is performed for this flow.
+
+## Public report browsing
+
+`/` shows the latest six public reports, `/reports` lists public reports with server-side search, filters, and 12-item pagination, and `/reports/[id]` shows a public detail page. Browsing does not require login.
+
+Public pages query `public.public_reports` and `public.public_report_images` only. They show `PUBLISHED` and `MATCHING` reports, and never select private characteristics, exact location detail, reporter identity, contact data, review fields, claim evidence, or OCR raw text.
+
+Supported filters are `q`, `type`, `category`, `campus`, `building`, `status`, `date_from`, `date_to`, and `page`. Report images stay in the private `report-images` bucket and are delivered with short-lived signed URLs; missing or unsigned images fall back to category placeholders. Claim workflow remains deferred, and no remote `supabase db push` is performed for this flow.
