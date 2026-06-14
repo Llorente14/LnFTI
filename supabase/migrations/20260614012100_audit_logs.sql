@@ -10,6 +10,8 @@ create table public.audit_logs (
   created_at timestamptz not null default now()
 );
 
+alter table public.audit_logs enable row level security;
+
 create or replace function public.reject_audit_log_mutation()
 returns trigger
 language plpgsql

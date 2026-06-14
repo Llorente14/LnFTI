@@ -57,6 +57,8 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles enable row level security;
+
 create table public.reports (
   id uuid primary key default extensions.gen_random_uuid(),
   reporter_id uuid not null references public.profiles(id) on delete restrict,
@@ -83,6 +85,8 @@ create table public.reports (
   updated_at timestamptz not null default now()
 );
 
+alter table public.reports enable row level security;
+
 create table public.report_images (
   id uuid primary key default extensions.gen_random_uuid(),
   report_id uuid not null references public.reports(id) on delete cascade,
@@ -92,6 +96,8 @@ create table public.report_images (
   created_at timestamptz not null default now(),
   unique (report_id, sort_order)
 );
+
+alter table public.report_images enable row level security;
 
 create table public.claims (
   id uuid primary key default extensions.gen_random_uuid(),
@@ -104,13 +110,35 @@ create table public.claims (
   decision_reason text null,
   expires_at timestamptz null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, report_id)
 );
+
+alter table public.claims enable row level security;
+
+create or replace function public.ensure_handover_claim_ready()
+returns trigger
+language plpgsql
+as $$
+begin
+  if not exists (
+    select 1
+    from public.claims
+    where claims.id = new.claim_id
+      and claims.report_id = new.report_id
+      and claims.claim_status in ('APPROVED', 'COMPLETED')
+  ) then
+    raise exception 'handover claim must belong to the report and be approved or completed';
+  end if;
+
+  return new;
+end;
+$$;
 
 create table public.handovers (
   id uuid primary key default extensions.gen_random_uuid(),
   report_id uuid not null references public.reports(id) on delete restrict,
-  claim_id uuid not null references public.claims(id) on delete restrict,
+  claim_id uuid not null,
   verifier_id uuid not null references public.profiles(id) on delete restrict,
   recipient_id uuid not null references public.profiles(id) on delete restrict,
   handover_at timestamptz not null default now(),
@@ -118,8 +146,10 @@ create table public.handovers (
   notes text null,
   created_at timestamptz not null default now(),
   unique (claim_id),
-  unique (report_id, claim_id)
+  foreign key (claim_id, report_id) references public.claims(id, report_id) on delete restrict
 );
+
+alter table public.handovers enable row level security;
 
 create trigger profiles_set_updated_at
 before update on public.profiles
@@ -132,6 +162,10 @@ for each row execute function public.set_updated_at();
 create trigger claims_set_updated_at
 before update on public.claims
 for each row execute function public.set_updated_at();
+
+create trigger handovers_ensure_claim_ready
+before insert or update of report_id, claim_id on public.handovers
+for each row execute function public.ensure_handover_claim_ready();
 
 create unique index claims_one_approved_per_report_idx
 on public.claims (report_id)
