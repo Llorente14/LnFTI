@@ -4,6 +4,7 @@ export const PUBLIC_REPORT_STATUSES = ["PUBLISHED", "MATCHING"] as const;
 export const REPORTS_PAGE_SIZE = 12;
 export const MAX_PUBLIC_REPORT_PAGE = 100;
 export const MAX_SEARCH_LENGTH = 100;
+export const PUBLIC_REPORT_TIME_ZONE = "Asia/Jakarta";
 
 export type PublicReportType = (typeof REPORT_TYPES)[number];
 export type PublicReportStatus = (typeof PUBLIC_REPORT_STATUSES)[number];
@@ -24,7 +25,7 @@ export type PublicReportFilters = {
 export type RawSearchParams = Record<string, string | string[] | undefined>;
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const filterControlCharsPattern = /[%_,()\\]/g;
+const filterControlCharsPattern = /[%_,().:"'\\]/g;
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -63,6 +64,14 @@ function isValidDateParam(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
 
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+export function toJakartaDayStartIso(value: string) {
+  return new Date(`${value}T00:00:00.000+07:00`).toISOString();
+}
+
+export function toJakartaDayEndIso(value: string) {
+  return new Date(`${value}T23:59:59.999+07:00`).toISOString();
 }
 
 export function parsePublicReportFilters(params: RawSearchParams = {}): PublicReportFilters {
