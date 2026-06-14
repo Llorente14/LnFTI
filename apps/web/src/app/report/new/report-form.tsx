@@ -11,7 +11,6 @@ import {
 } from "@/app/report/new/actions";
 import { ImagePicker, type SelectedReportImage } from "@/components/reports/image-picker";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 import { REPORT_CATEGORIES, REPORT_IMAGE_BUCKET, REPORT_TYPES } from "@/lib/reports/constants";
 import { buildReportImagePath } from "@/lib/reports/image-path";
 import {
@@ -20,6 +19,7 @@ import {
   validateReportImageMetadata,
   type ReportFormValues,
 } from "@/lib/reports/validation";
+import { createClient } from "@/lib/supabase/client";
 
 type FieldErrors = Partial<Record<keyof ReportFormValues | "images", string>>;
 
@@ -108,7 +108,8 @@ export function ReportForm() {
         return;
       }
 
-      const draft = await createDraftReportAction(parsed.data);
+      const eventAtIso = new Date(parsed.data.eventAt).toISOString();
+      const draft = await createDraftReportAction({ ...parsed.data, eventAt: eventAtIso });
 
       if (draft.status === "error") {
         setMessage(draft.message);
