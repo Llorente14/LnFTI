@@ -96,6 +96,53 @@ jobs:
         shell: bash
         run: supabase test db
 
+      - name: Export local Supabase public env
+        shell: bash
+        run: |
+          supabase status -o env > /tmp/supabase.env
+          set -a
+          source /tmp/supabase.env
+          set +a
+          echo "::add-mask::$ANON_KEY"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "RUN_SUPABASE_AUTH_INTEGRATION=1" >> "$GITHUB_ENV"
+          echo "NEXT_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
+
+      - name: Install web dependencies for auth integration
+        shell: bash
+        run: npm ci --prefix apps/web
+
+      - name: Build web for auth integration
+        shell: bash
+        run: npm --prefix apps/web run build
+
+      - name: Start web for auth integration
+        shell: bash
+        run: |
+          npm --prefix apps/web run start > /tmp/lnfti-web.log 2>&1 &
+          echo "$!" > /tmp/lnfti-web.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/lnfti-web.log
+          exit 1
+
+      - name: Run auth integration tests
+        shell: bash
+        run: npm --prefix apps/web run test:auth-integration
+
+      - name: Stop web
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/lnfti-web.pid ]; then
+            kill "$(cat /tmp/lnfti-web.pid)" || true
+          fi
+
       - name: Stop local Supabase
         if: always()
         shell: bash
