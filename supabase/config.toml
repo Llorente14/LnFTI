@@ -36,7 +36,7 @@ subject = "Konfirmasi email LnFTI"
 content_path = "./supabase/templates/confirmation.html"
 
 [storage]
-enabled = false
+enabled = true
 
 [realtime]
 enabled = false
