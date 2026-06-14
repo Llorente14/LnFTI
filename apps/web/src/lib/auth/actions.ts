@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -8,6 +7,7 @@ import {
   validateInstitutionalEmail,
   validateInstitutionalIdentity,
 } from "@/lib/auth/validation";
+import { getAppOrigin } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 const REGISTER_ERROR =
@@ -23,14 +23,6 @@ function formString(formData: FormData, name: string): string {
   const value = formData.get(name);
 
   return typeof value === "string" ? value : "";
-}
-
-async function getRequestOrigin(): Promise<string> {
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
-  const protocol = headerStore.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-
-  return `${protocol}://${host}`;
 }
 
 export async function registerAction(
@@ -64,7 +56,7 @@ export async function registerAction(
   }
 
   const supabase = await createClient();
-  const origin = await getRequestOrigin();
+  const appOrigin = getAppOrigin();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -73,7 +65,7 @@ export async function registerAction(
         full_name: fullName,
         nim,
       },
-      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${appOrigin}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });
 

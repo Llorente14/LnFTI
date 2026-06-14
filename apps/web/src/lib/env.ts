@@ -1,5 +1,6 @@
 const SUPABASE_URL_ENV = "NEXT_PUBLIC_SUPABASE_URL";
 const SUPABASE_PUBLISHABLE_KEY_ENV = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
+const APP_ORIGIN_ENV = "APP_ORIGIN";
 
 type PublicEnv = {
   supabaseUrl: string;
@@ -9,6 +10,10 @@ type PublicEnv = {
 type PublicEnvInput = {
   supabaseUrl: string | undefined;
   supabasePublishableKey: string | undefined;
+};
+
+type AppEnvInput = {
+  appOrigin: string | undefined;
 };
 
 function readRequiredValue(name: string, value: string | undefined): string {
@@ -38,6 +43,35 @@ function assertSupabaseUrl(value: string): string {
   }
 
   return url.toString().replace(/\/$/, "");
+}
+
+function assertAppOrigin(value: string): string {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${APP_ORIGIN_ENV} must be a valid URL.`);
+  }
+
+  if (url.username || url.password) {
+    throw new Error(`${APP_ORIGIN_ENV} must not include username or password.`);
+  }
+
+  if (url.pathname !== "/" || url.search || url.hash) {
+    throw new Error(`${APP_ORIGIN_ENV} must include only scheme, host, and optional port.`);
+  }
+
+  const isLocalHost = ["localhost", "127.0.0.1"].includes(url.hostname);
+  if (url.protocol === "http:" && !isLocalHost) {
+    throw new Error(`${APP_ORIGIN_ENV} may use http only for localhost or 127.0.0.1.`);
+  }
+
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && isLocalHost)) {
+    throw new Error(`${APP_ORIGIN_ENV} must use https outside local development.`);
+  }
+
+  return url.origin;
 }
 
 function decodeLegacyJwtPayload(value: string): unknown {
@@ -104,4 +138,16 @@ export function getPublicEnv(): PublicEnv {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   });
+}
+
+export function validateAppEnv(input: AppEnvInput): { appOrigin: string } {
+  return {
+    appOrigin: assertAppOrigin(readRequiredValue(APP_ORIGIN_ENV, input.appOrigin)),
+  };
+}
+
+export function getAppOrigin(): string {
+  return validateAppEnv({
+    appOrigin: process.env.APP_ORIGIN,
+  }).appOrigin;
 }

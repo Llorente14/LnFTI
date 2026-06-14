@@ -23,7 +23,7 @@ function loadEnvExports() {
   return moduleRecord.exports;
 }
 
-const { getPublicEnv, validatePublicEnv } = loadEnvExports();
+const { getAppOrigin, getPublicEnv, validateAppEnv, validatePublicEnv } = loadEnvExports();
 
 function legacyJwt(role) {
   const encode = (value) => Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
@@ -35,6 +35,7 @@ test("public env reads NEXT_PUBLIC values through static references", () => {
   assert.doesNotMatch(envSource, /process\.env\[/);
   assert.match(envSource, /process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(envSource, /process\.env\.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(envSource, /process\.env\.APP_ORIGIN/);
 });
 
 test("valid public env accepts https Supabase URL and publishable key", () => {
@@ -155,6 +156,42 @@ test("getPublicEnv validates current process env values", () => {
       delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     } else {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = originalKey;
+    }
+  }
+});
+
+test("APP_ORIGIN allows local http and requires https otherwise", () => {
+  assert.deepEqual(validateAppEnv({ appOrigin: "http://localhost:3000" }), {
+    appOrigin: "http://localhost:3000",
+  });
+  assert.deepEqual(validateAppEnv({ appOrigin: "http://127.0.0.1:3000/" }), {
+    appOrigin: "http://127.0.0.1:3000",
+  });
+  assert.deepEqual(validateAppEnv({ appOrigin: "https://lnfti.example" }), {
+    appOrigin: "https://lnfti.example",
+  });
+
+  assert.throws(() => validateAppEnv({ appOrigin: undefined }), /Missing required environment variable: APP_ORIGIN/);
+  assert.throws(() => validateAppEnv({ appOrigin: "http://lnfti.example" }), /may use http only/);
+  assert.throws(() => validateAppEnv({ appOrigin: "ftp://lnfti.example" }), /must use https/);
+  assert.throws(() => validateAppEnv({ appOrigin: "https://user:pass@lnfti.example" }), /must not include username/);
+  assert.throws(() => validateAppEnv({ appOrigin: "https://lnfti.example/auth" }), /only scheme, host/);
+  assert.throws(() => validateAppEnv({ appOrigin: "https://lnfti.example?x=1" }), /only scheme, host/);
+  assert.throws(() => validateAppEnv({ appOrigin: "https://lnfti.example#top" }), /only scheme, host/);
+});
+
+test("getAppOrigin validates configured APP_ORIGIN", () => {
+  const originalOrigin = process.env.APP_ORIGIN;
+
+  process.env.APP_ORIGIN = "https://lnfti.example";
+
+  try {
+    assert.equal(getAppOrigin(), "https://lnfti.example");
+  } finally {
+    if (originalOrigin === undefined) {
+      delete process.env.APP_ORIGIN;
+    } else {
+      process.env.APP_ORIGIN = originalOrigin;
     }
   }
 });
