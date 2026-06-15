@@ -679,14 +679,14 @@ select throws_ok(
 );
 
 select throws_ok(
-  $$ update public.audit_logs set metadata = '{"changed": true}'::jsonb where id = 1 $$,
+  $$ update public.audit_logs set metadata = '{"changed": true}'::jsonb where action = 'test.audit.inserted' $$,
   'P0001',
   'audit_logs is append-only',
   'audit_logs rejects update'
 );
 
 select throws_ok(
-  $$ delete from public.audit_logs where id = 1 $$,
+  $$ delete from public.audit_logs where action = 'test.audit.inserted' $$,
   'P0001',
   'audit_logs is append-only',
   'audit_logs rejects delete'
