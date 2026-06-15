@@ -1,0 +1,62 @@
+name: Claim review diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Supabase CLI
+        run: npm install --global supabase@2.106.0
+
+      - name: Start local Supabase
+        run: supabase start --log-level error > /dev/null
+
+      - name: Reset database
+        run: supabase db reset
+
+      - name: Capture claim review test
+        id: diagnostic
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          supabase test db supabase/tests/database/claim_review_workflow.test.sql > /tmp/claim-review.log 2>&1
+          status=$?
+          echo "$status" > /tmp/claim-review.status
+          cat /tmp/claim-review.log
+          exit "$status"
+
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-review-diagnostic
+          path: |
+            /tmp/claim-review.log
+            /tmp/claim-review.status
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail when diagnostic failed
+        shell: bash
+        run: |
+          status="$(cat /tmp/claim-review.status)"
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
