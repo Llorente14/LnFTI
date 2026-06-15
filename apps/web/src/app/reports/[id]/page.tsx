@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ClaimForm } from "@/components/claims/claim-form";
 import { ReportStatusBadge, ReportTypeBadge } from "@/components/reports/report-status-badge";
+import { getClaimEligibilityForReport } from "@/lib/claims/queries";
+import { buildClaimLoginHref } from "@/lib/claims/validation";
 import { isValidReportId } from "@/lib/reports/public-filters";
 import { getPublicReportById } from "@/lib/reports/public-queries";
 
@@ -29,6 +32,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
   if (!report) {
     notFound();
   }
+
+  const claimEligibility = await getClaimEligibilityForReport(report);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -102,8 +107,47 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
           </dl>
           <div className="mt-6 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-            Klaim kepemilikan akan tersedia pada ticket berikutnya.
+            Klaim hanya tersedia untuk laporan barang temuan yang masih publik.
           </div>
+
+          {report.report_type === "FOUND" ? (
+            <section className="mt-5 rounded-lg border bg-surface p-4">
+              <h2 className="font-heading text-base font-bold">Ajukan Klaim</h2>
+              {claimEligibility.state === "anonymous" ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-sm text-muted-foreground">Masuk dengan akun mahasiswa terverifikasi untuk mengajukan klaim.</p>
+                  <Link
+                    href={buildClaimLoginHref(report.id)}
+                    className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-strong"
+                  >
+                    Ajukan Klaim
+                  </Link>
+                </div>
+              ) : claimEligibility.state === "claimable" ? (
+                <div className="mt-3">
+                  <ClaimForm reportId={report.id} />
+                </div>
+              ) : claimEligibility.state === "owner" ? (
+                <p className="mt-3 text-sm text-muted-foreground">Anda tidak dapat mengklaim laporan yang Anda buat sendiri.</p>
+              ) : claimEligibility.state === "existing_pending_claim" ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Anda sudah memiliki klaim aktif untuk laporan ini.{" "}
+                  <Link href="/me/claims" className="font-semibold text-primary hover:text-primary-strong">
+                    Lihat Klaim Saya
+                  </Link>
+                </p>
+              ) : claimEligibility.state === "existing_approved_claim" ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Klaim aktif untuk laporan ini sudah tercatat.{" "}
+                  <Link href="/me/claims" className="font-semibold text-primary hover:text-primary-strong">
+                    Lihat Klaim Saya
+                  </Link>
+                </p>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">Akun Anda belum memenuhi syarat untuk mengajukan klaim.</p>
+              )}
+            </section>
+          ) : null}
         </aside>
       </div>
     </main>
