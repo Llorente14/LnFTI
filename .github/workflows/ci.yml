@@ -92,13 +92,41 @@ jobs:
         shell: bash
         run: supabase db reset
 
-      - name: Diagnose ownership claim tests
+      - name: Capture ownership claim test output
+        id: claim_diagnostic
+        continue-on-error: true
         shell: bash
-        run: supabase test db supabase/tests/database/claim_submission.test.sql
+        run: |
+          set +e
+          supabase test db supabase/tests/database/claim_submission.test.sql > /tmp/claim-submission.log 2>&1
+          status=$?
+          echo "$status" > /tmp/claim-submission.status
+          tail -n 120 /tmp/claim-submission.log
+          exit "$status"
+
+      - name: Upload ownership claim diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-submission-diagnostic
+          path: |
+            /tmp/claim-submission.log
+            /tmp/claim-submission.status
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Diagnose ownership claim safety tests
         shell: bash
         run: supabase test db supabase/tests/database/claim_submission_safety.test.sql
+
+      - name: Fail when ownership claim diagnostic failed
+        shell: bash
+        run: |
+          status="$(cat /tmp/claim-submission.status)"
+          if [ "$status" -ne 0 ]; then
+            cat /tmp/claim-submission.log
+            exit "$status"
+          fi
 
       - name: Run database tests
         shell: bash
