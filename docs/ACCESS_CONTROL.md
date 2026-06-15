@@ -27,6 +27,14 @@ Students receive only the columns needed for report and claim input. They cannot
 
 Verifier/admin workflow mutations are intentionally not granted directly. Report decisions, claim approval, role administration, export creation, and handover processing must use audited PostgreSQL RPCs from their dedicated Jira tickets.
 
+### Ownership claim submission
+
+`LNFTI-19` lets verified students submit ownership claims for public `FOUND` reports only when the report is `PUBLISHED` or `MATCHING`, the report belongs to another user, and the claimant does not already have an active claim for that report. Active duplicate prevention is enforced by a partial unique index on `(report_id, claimant_id)` for `PENDING`, `APPROVED`, and `COMPLETED` claims; `REJECTED`, `EXPIRED`, and `CANCELLED` claims allow later resubmission.
+
+Claim evidence is stored in `claims.ownership_evidence_private`, must be 20-2000 trimmed characters, and remains private to the claimant plus verifier/admin roles. It is not included in public report views, report cards, public detail metadata, URLs, audit metadata, or logs. Claim submission inserts only `report_id`, session-derived `claimant_id`, and private evidence; the database default sets `claim_status = PENDING`.
+
+`/me/claims` shows the current user's own claims, private evidence, safe public report information when still available through `public.public_reports`, and a generic unavailable message when the report is no longer public. Pending claims can be cancelled by the claimant only through `PENDING -> CANCELLED`; rows are never deleted. Submission and cancellation do not change `report_status`, `custody_status`, review fields, or publish timestamps. Claim approval/rejection remains deferred to `LNFTI-20`; handover remains deferred to `LNFTI-21`; automatic expiration jobs are not implemented here. Browser and Server Actions use the publishable key only, and no remote `supabase db push` should be run.
+
 ### Report review workflow
 
 `LNFTI-18` adds `public.review_report(uuid, public.report_review_decision, text)` for verifier/admin report decisions. The only allowed transitions are `PENDING_REVIEW -> PUBLISHED` for `APPROVE` and `PENDING_REVIEW -> REJECTED` for `REJECT`. Both decisions require a trimmed reason between 5 and 500 characters.
