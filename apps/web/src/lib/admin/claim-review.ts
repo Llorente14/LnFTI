@@ -1,19 +1,22 @@
 import "server-only";
 
-import { isClaimOverdue } from "@/lib/admin/claim-review-validation";
+import { claimOverdueCutoffIso, isClaimOverdue } from "@/lib/admin/claim-review-validation";
 import type { AdminCustodyStatus, AdminReportStatus, AdminReportType, ReporterProfile, VerifierReportImage } from "@/lib/admin/report-review";
 import { REPORT_IMAGE_BUCKET } from "@/lib/reports/constants";
 import { createClient } from "@/lib/supabase/server";
 
 const CLAIM_PAGE_SIZE = 20;
 const CLAIM_IMAGE_TTL_SECONDS = 12 * 60;
-const CLAIM_QUEUE_COLUMNS =
-  "id, report_id, claimant_id, claim_status, created_at, decided_at, decision_reason, claimant:profiles!claims_claimant_id_fkey(display_name, nim, program_study_code, cohort_year, verification_status), report:reports!claims_report_id_fkey(id, item_name, category, campus, building, report_status, custody_status)";
+const CLAIM_QUEUE_BASE_COLUMNS =
+  "id, report_id, claimant_id, claim_status, created_at, decided_at, decision_reason, claimant:profiles!claims_claimant_id_fkey(display_name, nim, program_study_code, cohort_year, verification_status)";
+const CLAIM_QUEUE_REPORT_COLUMNS =
+  "id, item_name, category, campus, building, report_status, custody_status";
 const CLAIM_DETAIL_COLUMNS =
   "id, report_id, claimant_id, ownership_evidence_private, claim_status, created_at, decided_at, decision_reason, expires_at, claimant:profiles!claims_claimant_id_fkey(display_name, nim, program_study_code, cohort_year, verification_status), report:reports!claims_report_id_fkey(id, reporter_id, report_type, item_name, category, public_description, private_characteristics, campus, building, location_detail, report_status, custody_status, created_at, published_at, reporter:profiles!reports_reporter_id_fkey(display_name, nim, program_study_code))";
 const CLAIM_IMAGE_COLUMNS = "report_id, storage_path, alt_text, sort_order";
 
 export type AdminClaimStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED" | "COMPLETED";
+export type ClaimQueueOrder = "oldest" | "newest";
 
 export type ClaimantProfile = {
   display_name: string | null;
@@ -69,6 +72,12 @@ export type ClaimFilters = {
   category?: string;
   page?: number;
   overdue?: boolean;
+  order?: ClaimQueueOrder;
+};
+
+type CountResult = {
+  count: number;
+  queryFailed: boolean;
 };
 
 function safeServerLog(message: string) {
@@ -85,6 +94,14 @@ function normalizePage(page: number | undefined) {
   return Math.min(Math.trunc(page), 100);
 }
 
+function claimQueueColumns(requireReportMatch: boolean) {
+  const reportJoin = requireReportMatch
+    ? `report:reports!claims_report_id_fkey!inner(${CLAIM_QUEUE_REPORT_COLUMNS})`
+    : `report:reports!claims_report_id_fkey(${CLAIM_QUEUE_REPORT_COLUMNS})`;
+
+  return `${CLAIM_QUEUE_BASE_COLUMNS}, ${reportJoin}`;
+}
+
 function firstEmbedded<T>(value: T[] | T | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
@@ -99,7 +116,7 @@ function normalizeQueueRow(row: unknown): ClaimQueueItem {
     ...claim,
     claimant: firstEmbedded(claim.claimant),
     report: firstEmbedded(claim.report),
-    isOverdue: isClaimOverdue(claim.created_at),
+    isOverdue: claim.claim_status === "PENDING" && isClaimOverdue(claim.created_at),
   };
 }
 
@@ -116,11 +133,11 @@ function normalizeDetailRow(row: unknown): ClaimDetail {
     ...claim,
     claimant: firstEmbedded(claim.claimant),
     report: report ? { ...report, reporter: firstEmbedded(report.reporter) } : null,
-    isOverdue: isClaimOverdue(claim.created_at),
+    isOverdue: claim.claim_status === "PENDING" && isClaimOverdue(claim.created_at),
   };
 }
 
-async function countClaimsByStatus(status: AdminClaimStatus) {
+async function countClaimsByStatus(status: AdminClaimStatus): Promise<CountResult> {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from("claims")
@@ -129,10 +146,26 @@ async function countClaimsByStatus(status: AdminClaimStatus) {
 
   if (error) {
     safeServerLog("Claim dashboard count failed.");
-    return 0;
+    return { count: 0, queryFailed: true };
   }
 
-  return count ?? 0;
+  return { count: count ?? 0, queryFailed: false };
+}
+
+async function countOverduePendingClaims(): Promise<CountResult> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("claims")
+    .select("id", { count: "exact", head: true })
+    .eq("claim_status", "PENDING")
+    .lt("created_at", claimOverdueCutoffIso());
+
+  if (error) {
+    safeServerLog("Overdue claim dashboard count failed.");
+    return { count: 0, queryFailed: true };
+  }
+
+  return { count: count ?? 0, queryFailed: false };
 }
 
 export async function getPendingClaims(filters: ClaimFilters = {}) {
@@ -141,11 +174,10 @@ export async function getPendingClaims(filters: ClaimFilters = {}) {
   const to = from + CLAIM_PAGE_SIZE - 1;
   const supabase = await createClient();
   const status = filters.status ?? "PENDING";
+  const ascending = (filters.order ?? "oldest") === "oldest";
   let query = supabase
     .from("claims")
-    .select(CLAIM_QUEUE_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: true })
-    .range(from, to);
+    .select(claimQueueColumns(Boolean(filters.category)), { count: "exact" });
 
   if (status !== "ALL") {
     query = query.eq("claim_status", status);
@@ -155,23 +187,25 @@ export async function getPendingClaims(filters: ClaimFilters = {}) {
     query = query.eq("report.category", filters.category);
   }
 
-  const { data, error, count } = await query;
+  if (filters.overdue) {
+    query = query
+      .eq("claim_status", "PENDING")
+      .lt("created_at", claimOverdueCutoffIso());
+  }
+
+  const { data, error, count } = await query
+    .order("created_at", { ascending })
+    .range(from, to);
 
   if (error || !data) {
     safeServerLog("Pending claim queue query failed.");
     return { claims: [], totalCount: 0, page, pageCount: 0, queryFailed: true };
   }
 
-  let claims = data.map(normalizeQueueRow);
-
-  if (filters.overdue) {
-    claims = claims.filter((claim) => claim.isOverdue);
-  }
-
-  const totalCount = filters.overdue ? claims.length : count ?? 0;
+  const totalCount = count ?? 0;
 
   return {
-    claims,
+    claims: data.map(normalizeQueueRow),
     totalCount,
     page,
     pageCount: Math.ceil(totalCount / CLAIM_PAGE_SIZE),
@@ -239,20 +273,18 @@ export async function getClaimReportImages(reportId: string) {
 }
 
 export async function getClaimDashboardSummary() {
-  const [pendingCount, approvedCount, recent] = await Promise.all([
+  const [pending, approved, overdue, recent] = await Promise.all([
     countClaimsByStatus("PENDING"),
     countClaimsByStatus("APPROVED"),
-    getPendingClaims({ status: "ALL", page: 1 }),
+    countOverduePendingClaims(),
+    getPendingClaims({ status: "ALL", page: 1, order: "newest" }),
   ]);
-  const recentClaimActivity = recent.claims.slice(0, 5);
-  const pendingForOverdue = await getPendingClaims({ page: 1 });
-  const overduePendingCount = pendingForOverdue.claims.filter((claim) => claim.isOverdue).length;
 
   return {
-    pendingClaimCount: pendingCount,
-    overduePendingClaimCount: overduePendingCount,
-    approvedClaimCount: approvedCount,
-    recentClaimActivity,
-    queryFailed: recent.queryFailed || pendingForOverdue.queryFailed,
+    pendingClaimCount: pending.count,
+    overduePendingClaimCount: overdue.count,
+    approvedClaimCount: approved.count,
+    recentClaimActivity: recent.claims.slice(0, 5),
+    queryFailed: pending.queryFailed || approved.queryFailed || overdue.queryFailed || recent.queryFailed,
   };
 }
