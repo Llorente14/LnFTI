@@ -1,8 +1,9 @@
-import { IconArrowRight, IconClipboardCheck, IconClock, IconX } from "@tabler/icons-react";
+import { IconArrowRight, IconClipboardCheck, IconClock, IconFileAlert, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/server";
+import { getClaimDashboardSummary } from "@/lib/admin/claim-review";
 import { getVerifierDashboardSummary } from "@/lib/admin/report-review";
 
 export const metadata = { title: "Dashboard Verifier" };
@@ -23,7 +24,10 @@ const stats = [
 
 export default async function AdminPage() {
   await requireRole(["verifier", "admin"], "/admin");
-  const summary = await getVerifierDashboardSummary();
+  const [summary, claimSummary] = await Promise.all([
+    getVerifierDashboardSummary(),
+    getClaimDashboardSummary(),
+  ]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -34,12 +38,20 @@ export default async function AdminPage() {
           </p>
           <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Dashboard verifier</h1>
         </div>
-        <Button asChild>
-          <Link href="/admin/reports">
-            Queue laporan
-            <IconArrowRight size={17} aria-hidden="true" />
-          </Link>
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button asChild>
+            <Link href="/admin/reports">
+              Queue laporan
+              <IconArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/admin/claims">
+              Queue klaim
+              <IconArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <section className="mt-6 grid gap-4 md:grid-cols-3">
@@ -52,6 +64,30 @@ export default async function AdminPage() {
             <p className="mt-3 font-heading text-3xl font-bold">{summary[key]}</p>
           </article>
         ))}
+      </section>
+
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
+        <article className="rounded-lg border bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Klaim pending</p>
+            <IconFileAlert size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <p className="mt-3 font-heading text-3xl font-bold">{claimSummary.pendingClaimCount}</p>
+        </article>
+        <article className="rounded-lg border bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Klaim overdue</p>
+            <IconClock size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <p className="mt-3 font-heading text-3xl font-bold">{claimSummary.overduePendingClaimCount}</p>
+        </article>
+        <article className="rounded-lg border bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Klaim disetujui</p>
+            <IconClipboardCheck size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <p className="mt-3 font-heading text-3xl font-bold">{claimSummary.approvedClaimCount}</p>
+        </article>
       </section>
 
       <section className="mt-8">
@@ -89,6 +125,49 @@ export default async function AdminPage() {
                     </p>
                   </div>
                   <p className="text-sm text-muted-foreground">{formatDateTime(report.created_at)}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-primary">Claim activity</p>
+            <h2 className="font-heading text-2xl font-bold">Aktivitas klaim terbaru</h2>
+          </div>
+          <Link href="/admin/claims" className="text-sm font-semibold text-primary hover:text-primary-strong">
+            Lihat queue klaim
+          </Link>
+        </div>
+
+        {claimSummary.queryFailed ? (
+          <p className="mt-5 rounded-lg border bg-surface p-4 text-sm text-muted-foreground">
+            Ringkasan klaim belum dapat dimuat.
+          </p>
+        ) : claimSummary.recentClaimActivity.length === 0 ? (
+          <p className="mt-5 rounded-lg border bg-surface p-4 text-sm text-muted-foreground">
+            Belum ada aktivitas klaim.
+          </p>
+        ) : (
+          <div className="mt-5 overflow-hidden rounded-lg border bg-surface">
+            <div className="divide-y">
+              {claimSummary.recentClaimActivity.map((claim) => (
+                <Link
+                  key={claim.id}
+                  href={`/admin/claims/${claim.id}`}
+                  className="grid gap-2 p-4 hover:bg-muted sm:grid-cols-[1fr_auto]"
+                >
+                  <div>
+                    <p className="font-heading font-semibold">{claim.report?.item_name ?? "Laporan tidak tersedia"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {claim.claim_status} / {claim.claimant?.display_name ?? "Profil tidak tersedia"}
+                      {claim.isOverdue ? " / Overdue" : ""}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{formatDateTime(claim.created_at)}</p>
                 </Link>
               ))}
             </div>
