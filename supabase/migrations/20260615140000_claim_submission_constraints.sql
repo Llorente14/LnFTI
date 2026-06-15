@@ -16,3 +16,34 @@ where claim_status in (
 
 create index claims_claimant_created_at_idx
 on public.claims (claimant_id, created_at desc);
+
+-- Keep the database as the authoritative claimability boundary. A report that
+-- has already been handed over must not accept a new ownership claim even if a
+-- stale workflow state leaves it PUBLISHED or MATCHING.
+create or replace function public.can_claim_report(target_report_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_verified_student()
+    and exists (
+      select 1
+      from public.reports as reports
+      where reports.id = target_report_id
+        and reports.report_type = 'FOUND'::public.report_type
+        and reports.report_status in (
+          'PUBLISHED'::public.report_status,
+          'MATCHING'::public.report_status
+        )
+        and reports.custody_status <> 'HANDED_OVER'::public.custody_status
+        and reports.reporter_id <> auth.uid()
+    )
+$$;
+
+revoke all on function public.can_claim_report(uuid)
+from public, anon, authenticated;
+
+grant execute on function public.can_claim_report(uuid)
+to authenticated;
