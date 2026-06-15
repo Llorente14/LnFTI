@@ -185,23 +185,19 @@ export async function getVerifierReportImages(reportId: string) {
     return [];
   }
 
-  const images: VerifierReportImage[] = [];
-
-  for (const image of data as Array<{
-    report_id: string;
-    storage_path: string;
-    alt_text: string | null;
-    sort_order: number;
-  }>) {
-    images.push({
+  return Promise.all(
+    (data as Array<{
+      report_id: string;
+      storage_path: string;
+      alt_text: string | null;
+      sort_order: number;
+    }>).map(async (image) => ({
       report_id: image.report_id,
       alt_text: image.alt_text,
       sort_order: image.sort_order,
       signedUrl: await signVerifierImage(image.storage_path),
-    });
-  }
-
-  return images;
+    })),
+  );
 }
 
 export async function getVerifierDashboardSummary() {
