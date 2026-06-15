@@ -31,7 +31,7 @@ export async function cancelPendingClaimAction(
     .eq("id", parsed.data.claimId)
     .eq("claimant_id", user.id)
     .eq("claim_status", "PENDING")
-    .select("id")
+    .select("id, report_id")
     .maybeSingle();
 
   if (error || !data) {
@@ -39,6 +39,7 @@ export async function cancelPendingClaimAction(
   }
 
   revalidatePath("/me/claims");
+  revalidatePath(`/reports/${data.report_id}`);
 
   return { status: "success", message: "Klaim berhasil dibatalkan." };
 }
