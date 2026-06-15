@@ -145,6 +145,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
                 </p>
               ) : claimEligibility.state === "unavailable" ? (
                 <p className="mt-3 text-sm text-muted-foreground">Laporan ini tidak lagi dapat diklaim.</p>
+              ) : claimEligibility.state === "matching" ? (
+                <p className="mt-3 text-sm text-muted-foreground">Klaim sedang diproses. Laporan tetap dapat dilihat, tetapi klaim baru ditutup.</p>
               ) : (
                 <p className="mt-3 text-sm text-muted-foreground">Akun Anda belum memenuhi syarat untuk mengajukan klaim.</p>
               )}

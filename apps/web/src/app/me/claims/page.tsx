@@ -138,6 +138,18 @@ export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) 
                 </div>
               </dl>
 
+              {claim.claim_status === "APPROVED" ? (
+                <p className="mt-4 rounded-md bg-[var(--gold-pale)] p-3 text-sm text-muted-foreground">
+                  Klaim disetujui. Serah-terima fisik belum selesai dan kontak tidak dibagikan otomatis.
+                </p>
+              ) : null}
+
+              {claim.claim_status === "REJECTED" ? (
+                <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                  Klaim ditolak. Pengajuan ulang hanya mungkin bila laporan masih PUBLISHED dan aturan database mengizinkan.
+                </p>
+              ) : null}
+
               <section className="mt-5 rounded-md border border-primary/20 bg-[var(--crimson-pale-2)] p-4">
                 <h3 className="font-heading text-sm font-bold text-primary">Bukti privat Anda</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
