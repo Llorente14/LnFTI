@@ -19,6 +19,7 @@ export type ClaimEligibilityState =
   | "owner"
   | "existing_pending_claim"
   | "existing_approved_claim"
+  | "matching"
   | "unavailable"
   | "claimable";
 
@@ -60,6 +61,10 @@ function normalizePage(page: number | undefined) {
 export async function getClaimEligibilityForReport(report: PublicReport): Promise<ClaimEligibility> {
   if (report.report_type !== "FOUND" || report.custody_status === "HANDED_OVER") {
     return { state: "unavailable" };
+  }
+
+  if (report.report_status === "MATCHING") {
+    return { state: "matching" };
   }
 
   const user = await getCurrentUser();
