@@ -3,6 +3,9 @@ import { z } from "zod";
 export const CLAIM_REVIEW_DECISIONS = ["APPROVE", "REJECT"] as const;
 export type ClaimReviewDecision = (typeof CLAIM_REVIEW_DECISIONS)[number];
 
+export const CLAIM_OVERDUE_DAYS = 3;
+const CLAIM_OVERDUE_MS = CLAIM_OVERDUE_DAYS * 24 * 60 * 60 * 1000;
+
 const decisionReasonSchema = z
   .string()
   .trim()
@@ -15,6 +18,10 @@ export const claimReviewFormSchema = z.object({
   reason: decisionReasonSchema,
 });
 
+export function claimOverdueCutoffIso(now = new Date()) {
+  return new Date(now.getTime() - CLAIM_OVERDUE_MS).toISOString();
+}
+
 export function isClaimOverdue(createdAt: string, now = new Date()) {
   const created = new Date(createdAt);
 
@@ -22,5 +29,5 @@ export function isClaimOverdue(createdAt: string, now = new Date()) {
     return false;
   }
 
-  return now.getTime() - created.getTime() > 3 * 24 * 60 * 60 * 1000;
+  return created.getTime() < now.getTime() - CLAIM_OVERDUE_MS;
 }
