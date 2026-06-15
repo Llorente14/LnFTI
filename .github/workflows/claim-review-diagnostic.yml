@@ -26,33 +26,33 @@ jobs:
       - name: Reset database
         run: supabase db reset
 
-      - name: Capture claim review test
+      - name: Capture complete database suite
         id: diagnostic
         continue-on-error: true
         shell: bash
         run: |
           set +e
-          supabase test db supabase/tests/database/claim_review_workflow.test.sql > /tmp/claim-review.log 2>&1
+          supabase test db > /tmp/database-suite.log 2>&1
           status=$?
-          echo "$status" > /tmp/claim-review.status
-          cat /tmp/claim-review.log
+          echo "$status" > /tmp/database-suite.status
+          cat /tmp/database-suite.log
           exit "$status"
 
       - name: Upload diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: claim-review-diagnostic
+          name: database-suite-diagnostic
           path: |
-            /tmp/claim-review.log
-            /tmp/claim-review.status
+            /tmp/database-suite.log
+            /tmp/database-suite.status
           if-no-files-found: error
           retention-days: 1
 
       - name: Fail when diagnostic failed
         shell: bash
         run: |
-          status="$(cat /tmp/claim-review.status)"
+          status="$(cat /tmp/database-suite.status)"
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
