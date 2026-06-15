@@ -27,6 +27,16 @@ Students receive only the columns needed for report and claim input. They cannot
 
 Verifier/admin workflow mutations are intentionally not granted directly. Report decisions, claim approval, role administration, export creation, and handover processing must use audited PostgreSQL RPCs from their dedicated Jira tickets.
 
+### Report review workflow
+
+`LNFTI-18` adds `public.review_report(uuid, public.report_review_decision, text)` for verifier/admin report decisions. The only allowed transitions are `PENDING_REVIEW -> PUBLISHED` for `APPROVE` and `PENDING_REVIEW -> REJECTED` for `REJECT`. Both decisions require a trimmed reason between 5 and 500 characters.
+
+The RPC writes one append-only `audit_logs` row in the same transaction. Approval uses `REPORT_REVIEW_APPROVED`; rejection uses `REPORT_REVIEW_REJECTED`. The `before_data` and `after_data` payloads contain only `report_status`, `custody_status`, `reviewed_by`, `reviewed_at`, `rejection_reason`, and `published_at`. Metadata contains `reason`, `decision`, `report_type`, and `source`.
+
+`public.set_report_custody_status(uuid, public.custody_status, text)` updates only `custody_status` for non-draft reports and audits `REPORT_CUSTODY_CHANGED`. Supported custody values are `WITH_FINDER`, `AT_DPM`, `HANDED_OVER`, and `UNKNOWN`. `HANDED_OVER` is only a manual audited marker in this workflow; transactional handover rows remain deferred to `LNFTI-21`. Claim review remains deferred to `LNFTI-20`.
+
+Both RPCs grant `EXECUTE` only to `authenticated` and independently require `current_app_role()` to be `verifier` or `admin`. Authenticated students have execute privilege but are denied inside the functions. Browser and Server Actions use the publishable key only; no service-role key is used. Public page revalidation runs after review mutations, but `public.public_reports` and `public.public_report_images` remain the only anonymous report sources. Apply the migration through normal local/CI reset flow; do not run remote `supabase db push`.
+
 ## Key boundary
 
 The browser uses only the Supabase publishable/anon key. Service-role and secret keys remain server-only and must never appear in `NEXT_PUBLIC_*`, browser bundles, or client-side tests.
