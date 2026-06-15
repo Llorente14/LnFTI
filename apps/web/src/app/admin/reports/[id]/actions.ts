@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireRole } from "@/lib/auth/server";
 import { custodyStatusSchema, reportReviewSchema } from "@/lib/admin/report-review-validation";
+import { requireRole } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 
 export type AdminActionState = {
@@ -43,6 +43,12 @@ function revalidateAdminReport(reportId: string) {
   revalidatePath(`/admin/reports/${reportId}`);
 }
 
+function revalidatePublicReport(reportId: string) {
+  revalidatePath("/");
+  revalidatePath("/reports");
+  revalidatePath(`/reports/${reportId}`);
+}
+
 export async function reviewReportAction(
   _previousState: AdminActionState,
   formData: FormData,
@@ -72,12 +78,7 @@ export async function reviewReportAction(
   }
 
   revalidateAdminReport(reportId);
-  revalidatePath("/");
-  revalidatePath("/reports");
-
-  if (decision === "APPROVE") {
-    revalidatePath(`/reports/${reportId}`);
-  }
+  revalidatePublicReport(reportId);
 
   return {
     status: "success",
@@ -115,6 +116,7 @@ export async function updateCustodyStatusAction(
   }
 
   revalidateAdminReport(reportId);
+  revalidatePublicReport(reportId);
 
   return { status: "success", message: "Status penitipan diperbarui." };
 }
