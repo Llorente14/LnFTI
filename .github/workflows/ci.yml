@@ -92,54 +92,6 @@ jobs:
         shell: bash
         run: supabase db reset
 
-      - name: Capture ownership claim test output
-        continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          supabase test db supabase/tests/database/claim_submission.test.sql > /tmp/claim-submission.log 2>&1
-          status=$?
-          echo "$status" > /tmp/claim-submission.status
-          tail -n 120 /tmp/claim-submission.log
-          exit "$status"
-
-      - name: Capture ownership claim safety output
-        continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          supabase test db supabase/tests/database/claim_submission_safety.test.sql > /tmp/claim-safety.log 2>&1
-          status=$?
-          echo "$status" > /tmp/claim-safety.status
-          tail -n 120 /tmp/claim-safety.log
-          exit "$status"
-
-      - name: Upload ownership claim diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: claim-submission-diagnostic
-          path: |
-            /tmp/claim-submission.log
-            /tmp/claim-submission.status
-            /tmp/claim-safety.log
-            /tmp/claim-safety.status
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Fail when ownership claim diagnostics failed
-        shell: bash
-        run: |
-          submission_status="$(cat /tmp/claim-submission.status)"
-          safety_status="$(cat /tmp/claim-safety.status)"
-          if [ "$submission_status" -ne 0 ] || [ "$safety_status" -ne 0 ]; then
-            echo "claim_submission.test.sql"
-            cat /tmp/claim-submission.log
-            echo "claim_submission_safety.test.sql"
-            cat /tmp/claim-safety.log
-            exit 1
-          fi
-
       - name: Run database tests
         shell: bash
         run: supabase test db
