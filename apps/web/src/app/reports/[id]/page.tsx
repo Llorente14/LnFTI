@@ -107,7 +107,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
           </dl>
           <div className="mt-6 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-            Klaim hanya tersedia untuk laporan barang temuan yang masih publik.
+            Klaim hanya tersedia untuk laporan barang temuan yang masih publik dan belum diserahkan.
           </div>
 
           {report.report_type === "FOUND" ? (
@@ -143,6 +143,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
                     Lihat Klaim Saya
                   </Link>
                 </p>
+              ) : claimEligibility.state === "unavailable" ? (
+                <p className="mt-3 text-sm text-muted-foreground">Laporan ini tidak lagi dapat diklaim.</p>
               ) : (
                 <p className="mt-3 text-sm text-muted-foreground">Akun Anda belum memenuhi syarat untuk mengajukan klaim.</p>
               )}
