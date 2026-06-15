@@ -1,16 +1,100 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
-import { requireUser } from "@/lib/auth/server";
+import { IconArrowRight, IconClipboardCheck, IconClock, IconX } from "@tabler/icons-react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { requireRole } from "@/lib/auth/server";
+import { getVerifierDashboardSummary } from "@/lib/admin/report-review";
 
 export const metadata = { title: "Dashboard Verifier" };
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(value));
+}
+
+const stats = [
+  { key: "pendingCount", label: "Menunggu review", icon: IconClock },
+  { key: "publishedCount", label: "Terpublikasi", icon: IconClipboardCheck },
+  { key: "rejectedCount", label: "Ditolak", icon: IconX },
+] as const;
+
 export default async function AdminPage() {
-  await requireUser("/admin");
+  await requireRole(["verifier", "admin"], "/admin");
+  const summary = await getVerifierDashboardSummary();
 
   return (
-    <PlaceholderPage
-      eyebrow="Verifier workspace"
-      title="Dashboard verifier"
-      description="Review laporan, klaim, custody, serah-terima, audit log, dan ekspor akan ditempatkan di area ini."
-    />
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            Verifier workspace
+          </p>
+          <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Dashboard verifier</h1>
+        </div>
+        <Button asChild>
+          <Link href="/admin/reports">
+            Queue laporan
+            <IconArrowRight size={17} aria-hidden="true" />
+          </Link>
+        </Button>
+      </div>
+
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
+        {stats.map(({ key, label, icon: Icon }) => (
+          <article key={key} className="rounded-lg border bg-surface p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">{label}</p>
+              <Icon size={20} className="text-primary" aria-hidden="true" />
+            </div>
+            <p className="mt-3 font-heading text-3xl font-bold">{summary[key]}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-primary">Oldest first</p>
+            <h2 className="font-heading text-2xl font-bold">Laporan paling lama menunggu</h2>
+          </div>
+          <Link href="/admin/reports" className="text-sm font-semibold text-primary hover:text-primary-strong">
+            Lihat semua
+          </Link>
+        </div>
+
+        {summary.queryFailed ? (
+          <p className="mt-5 rounded-lg border bg-surface p-4 text-sm text-muted-foreground">
+            Ringkasan laporan belum dapat dimuat.
+          </p>
+        ) : summary.oldestPendingReports.length === 0 ? (
+          <p className="mt-5 rounded-lg border bg-surface p-4 text-sm text-muted-foreground">
+            Tidak ada laporan menunggu review.
+          </p>
+        ) : (
+          <div className="mt-5 overflow-hidden rounded-lg border bg-surface">
+            <div className="divide-y">
+              {summary.oldestPendingReports.map((report) => (
+                <Link
+                  key={report.id}
+                  href={`/admin/reports/${report.id}`}
+                  className="grid gap-2 p-4 hover:bg-muted sm:grid-cols-[1fr_auto]"
+                >
+                  <div>
+                    <p className="font-heading font-semibold">{report.item_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {report.report_type} / {report.category} / {report.building}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{formatDateTime(report.created_at)}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
