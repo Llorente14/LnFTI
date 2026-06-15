@@ -92,6 +92,14 @@ jobs:
         shell: bash
         run: supabase db reset
 
+      - name: Diagnose ownership claim tests
+        shell: bash
+        run: supabase test db supabase/tests/database/claim_submission.test.sql
+
+      - name: Diagnose ownership claim safety tests
+        shell: bash
+        run: supabase test db supabase/tests/database/claim_submission_safety.test.sql
+
       - name: Run database tests
         shell: bash
         run: supabase test db
