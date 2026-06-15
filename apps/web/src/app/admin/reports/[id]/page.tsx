@@ -11,6 +11,7 @@ import {
   type AdminReportStatus,
   type AdminCustodyStatus,
 } from "@/lib/admin/report-review";
+import { requireRole } from "@/lib/auth/server";
 import { isValidReportId } from "@/lib/reports/public-filters";
 import { CustodyStatusForm, ReviewDecisionForm } from "./review-controls";
 
@@ -75,6 +76,8 @@ function ImagePlaceholder({ label }: { label: string }) {
 
 export default async function AdminReportDetailPage({ params }: AdminReportDetailPageProps) {
   const { id } = await params;
+
+  await requireRole(["verifier", "admin"], `/admin/reports/${id}`);
 
   if (!isValidReportId(id)) {
     notFound();
