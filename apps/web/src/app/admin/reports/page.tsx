@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { REPORT_CATEGORIES, REPORT_TYPES } from "@/lib/reports/constants";
 import { getPendingReviewReports, type AdminReportType } from "@/lib/admin/report-review";
+import { requireRole } from "@/lib/auth/server";
+import { REPORT_CATEGORIES, REPORT_TYPES } from "@/lib/reports/constants";
 
 export const metadata = { title: "Review Laporan" };
 
@@ -44,6 +45,8 @@ function formatDateTime(value: string) {
 }
 
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
+  await requireRole(["verifier", "admin"], "/admin/reports");
+
   const params = await searchParams;
   const rawType = (firstParam(params.type) ?? "").toUpperCase();
   const rawCategory = firstParam(params.category) ?? "";
