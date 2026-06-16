@@ -36,6 +36,13 @@ export type MyClaim = {
   expires_at: string | null;
   created_at: string;
   publicReport: PublicReport | null;
+  handover: MyClaimHandover | null;
+};
+
+export type MyClaimHandover = {
+  handover_at: string;
+  handover_location: string;
+  notes: string | null;
 };
 
 export type MyClaimsFilters = {
@@ -185,9 +192,11 @@ export async function getMyClaims(filters: MyClaimsFilters = {}) {
     return { claims: [], totalCount: 0, page, pageCount: 0, queryFailed: true };
   }
 
-  const claims = data as Array<Omit<MyClaim, "publicReport">>;
+  const claims = data as Array<Omit<MyClaim, "publicReport" | "handover">>;
   const reportIds = Array.from(new Set(claims.map((claim) => claim.report_id)));
+  const claimIds = Array.from(new Set(claims.map((claim) => claim.id)));
   const publicReportsById = new Map<string, PublicReport>();
+  const handoversByClaimId = new Map<string, MyClaimHandover>();
 
   if (reportIds.length > 0) {
     const { data: reports, error: reportError } = await supabase
@@ -204,12 +213,32 @@ export async function getMyClaims(filters: MyClaimsFilters = {}) {
     }
   }
 
+  if (claimIds.length > 0) {
+    const { data: handovers, error: handoverError } = await supabase
+      .from("handovers")
+      .select("claim_id, handover_at, handover_location, notes")
+      .in("claim_id", claimIds);
+
+    if (handoverError) {
+      safeServerLog("My claims handover lookup failed.");
+    }
+
+    for (const handover of (handovers ?? []) as Array<MyClaimHandover & { claim_id: string }>) {
+      handoversByClaimId.set(handover.claim_id, {
+        handover_at: handover.handover_at,
+        handover_location: handover.handover_location,
+        notes: handover.notes,
+      });
+    }
+  }
+
   const totalCount = count ?? 0;
 
   return {
     claims: claims.map((claim) => ({
       ...claim,
       publicReport: publicReportsById.get(claim.report_id) ?? null,
+      handover: handoversByClaimId.get(claim.id) ?? null,
     })),
     totalCount,
     page,
