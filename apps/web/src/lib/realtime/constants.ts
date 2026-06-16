@@ -1,6 +1,9 @@
 import type { RealtimeChannelConfig } from "@/lib/realtime/types";
 
 const publicSchema = "public" as const;
+const adminReportWorkflowFilter = "report_status=in.(PENDING_REVIEW,PUBLISHED,REJECTED)";
+const handoverClaimFilter = "claim_status=in.(APPROVED,COMPLETED)";
+const handoverReportFilter = "report_status=in.(MATCHING,RESOLVED)";
 
 export function buildMyClaimsRealtimeConfig(userId: string): RealtimeChannelConfig {
   return {
@@ -28,8 +31,20 @@ export function buildAdminReportQueueRealtimeConfig(): RealtimeChannelConfig {
   return {
     channelName: "admin-report-queue",
     subscriptions: [
-      { event: "INSERT", schema: publicSchema, table: "reports", relevance: "admin-report-queue" },
-      { event: "UPDATE", schema: publicSchema, table: "reports", relevance: "admin-report-queue" },
+      {
+        event: "INSERT",
+        schema: publicSchema,
+        table: "reports",
+        filter: adminReportWorkflowFilter,
+        relevance: "admin-report-queue",
+      },
+      {
+        event: "UPDATE",
+        schema: publicSchema,
+        table: "reports",
+        filter: adminReportWorkflowFilter,
+        relevance: "admin-report-queue",
+      },
     ],
   };
 }
@@ -79,8 +94,20 @@ export function buildAdminHandoverQueueRealtimeConfig(): RealtimeChannelConfig {
   return {
     channelName: "admin-handover-queue",
     subscriptions: [
-      { event: "UPDATE", schema: publicSchema, table: "claims", relevance: "admin-handover-queue" },
-      { event: "UPDATE", schema: publicSchema, table: "reports", relevance: "admin-handover-queue" },
+      {
+        event: "UPDATE",
+        schema: publicSchema,
+        table: "claims",
+        filter: handoverClaimFilter,
+        relevance: "admin-handover-queue",
+      },
+      {
+        event: "UPDATE",
+        schema: publicSchema,
+        table: "reports",
+        filter: handoverReportFilter,
+        relevance: "admin-handover-queue",
+      },
       { event: "INSERT", schema: publicSchema, table: "handovers", relevance: "admin-handover-queue" },
     ],
   };
