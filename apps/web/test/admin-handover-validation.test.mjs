@@ -54,14 +54,26 @@ test("invalid claim UUID fails", () => {
   assert.throws(() => validation.handoverFormSchema.parse({ claimId: "bad-id", handoverLocation: "Pos DPM", notes: "" }), /ID klaim/);
 });
 
-test("eligibility helper accepts approved matching found claim", () => {
+test("eligibility helper accepts approved matching found claim for verified claimant", () => {
   assert.equal(validation.isHandoverEligible({
     claimStatus: "APPROVED",
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
+    claimantVerificationStatus: "VERIFIED",
     hasHandover: false,
   }), true);
+});
+
+test("eligibility helper rejects unverified claimant", () => {
+  assert.equal(validation.isHandoverEligible({
+    claimStatus: "APPROVED",
+    reportType: "FOUND",
+    reportStatus: "MATCHING",
+    custodyStatus: "AT_DPM",
+    claimantVerificationStatus: "PENDING_EMAIL",
+    hasHandover: false,
+  }), false);
 });
 
 test("eligibility helper rejects non-approved or completed states", () => {
@@ -70,6 +82,7 @@ test("eligibility helper rejects non-approved or completed states", () => {
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
+    claimantVerificationStatus: "VERIFIED",
     hasHandover: false,
   }), false);
   assert.equal(validation.isHandoverEligible({
@@ -77,6 +90,7 @@ test("eligibility helper rejects non-approved or completed states", () => {
     reportType: "FOUND",
     reportStatus: "RESOLVED",
     custodyStatus: "HANDED_OVER",
+    claimantVerificationStatus: "VERIFIED",
     hasHandover: true,
   }), false);
 });
