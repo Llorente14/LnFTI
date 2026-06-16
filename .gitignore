@@ -18,8 +18,10 @@ __pycache__/
 venv/
 
 # Models and generated files
+*.pt
 models/*.pt
 models/*.onnx
+runs/
 uploads/
 
 # Editors and OS
