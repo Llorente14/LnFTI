@@ -82,10 +82,6 @@ async function assertFakeAiReady(env) {
   assert.equal(unauthorized.status, 401);
 }
 
-async function waitForRealtimeRefresh(page, message = "Data diperbarui.") {
-  await page.getByText(message).waitFor({ timeout: 30_000 });
-}
-
 maybeTest("complete MVP flow verifies report, AI, claim, handover, public privacy, and PWA smoke", { timeout: 180_000 }, async (t) => {
   const env = requireLocalIntegrationEnv();
   const finder = createInstitutionalIdentity("Finder", "535");
@@ -318,7 +314,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.notEqual(approved.custody_status, "HANDED_OVER");
       assert.equal(approved.handover_count, 0);
 
-      await waitForRealtimeRefresh(claimantPage, "Status klaim diperbarui.");
       await claimantPage.getByText("Klaim disetujui. Serah-terima fisik belum selesai", { exact: false }).waitFor({ timeout: 30_000 });
     });
 
@@ -379,7 +374,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await verifierPage.getByText("Status serah-terima").waitFor({ timeout: 30_000 });
       await verifierPage.getByText("Selesai").first().waitFor();
 
-      await waitForRealtimeRefresh(claimantPage, "Status klaim diperbarui.");
       await claimantPage.getByText("Barang sudah diserahkan kepada Anda.").waitFor({ timeout: 30_000 });
       await claimantPage.getByText(handoverLocation).waitFor();
       await claimantPage.getByText(handoverNote).waitFor();
