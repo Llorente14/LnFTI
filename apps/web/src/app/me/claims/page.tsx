@@ -115,7 +115,10 @@ export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) 
                       </Link>
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">Laporan tidak lagi tersedia secara publik.</p>
+                    <div className="mt-3">
+                      <h2 className="font-heading text-lg font-bold">Laporan selesai</h2>
+                      <p className="text-sm text-muted-foreground">Laporan tidak lagi tersedia secara publik.</p>
+                    </div>
                   )}
                 </div>
                 {isCancellableClaimStatus(claim.claim_status) ? (
@@ -142,6 +145,31 @@ export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) 
                 <p className="mt-4 rounded-md bg-[var(--gold-pale)] p-3 text-sm text-muted-foreground">
                   Klaim disetujui. Serah-terima fisik belum selesai dan kontak tidak dibagikan otomatis.
                 </p>
+              ) : null}
+
+              {claim.claim_status === "COMPLETED" && claim.handover ? (
+                <section className="mt-4 rounded-md border border-green-700/20 bg-green-50 p-4">
+                  <h3 className="font-heading text-sm font-bold text-green-900">Selesai</h3>
+                  <p className="mt-2 text-sm text-green-900">
+                    Barang sudah diserahkan kepada Anda.
+                  </p>
+                  <dl className="mt-3 grid gap-3 text-sm text-green-900 md:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold">Tanggal serah-terima</dt>
+                      <dd>{formatDateTime(claim.handover.handover_at)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Lokasi serah-terima</dt>
+                      <dd>{claim.handover.handover_location}</dd>
+                    </div>
+                    {claim.handover.notes ? (
+                      <div className="md:col-span-2">
+                        <dt className="font-semibold">Catatan</dt>
+                        <dd className="whitespace-pre-wrap">{claim.handover.notes}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </section>
               ) : null}
 
               {claim.claim_status === "REJECTED" ? (
