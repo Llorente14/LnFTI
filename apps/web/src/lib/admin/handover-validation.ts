@@ -33,6 +33,7 @@ export type HandoverEligibilityInput = {
   reportType: AdminReportType | null;
   reportStatus: AdminReportStatus | null;
   custodyStatus: AdminCustodyStatus | null;
+  claimantVerificationStatus: string | null;
   hasHandover: boolean;
 };
 
@@ -41,5 +42,6 @@ export function isHandoverEligible(input: HandoverEligibilityInput) {
     && input.reportType === "FOUND"
     && input.reportStatus === "MATCHING"
     && input.custodyStatus !== "HANDED_OVER"
+    && input.claimantVerificationStatus === "VERIFIED"
     && !input.hasHandover;
 }
