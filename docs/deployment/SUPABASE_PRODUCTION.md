@@ -1,0 +1,70 @@
+# Supabase Production Deployment
+
+Use one dedicated Supabase Cloud project for LnFTI production. Never push local seed data or run destructive reset commands against linked production.
+
+## Safe Order
+
+1. Create or select dedicated LnFTI production project.
+2. Record project ref locally and in deployment record.
+3. Confirm local migrations pass with `supabase db reset`, `supabase test db`, and `supabase db lint --level warning`.
+4. Log in with `supabase login`.
+5. Link repository with `supabase link --project-ref <PROJECT_REF>`.
+6. Inspect migration status with `supabase migration list`.
+7. Run `supabase db push --dry-run`.
+8. Review every pending migration.
+9. Push once with `supabase db push`.
+10. Do not include development seed data.
+11. Verify schema, RLS, Storage, RPCs, and Realtime.
+12. Configure Auth Site URL and exact redirect URLs.
+13. Register one controlled verifier/admin account.
+14. Run safe smoke tests.
+15. Record deployment timestamp and commit SHA.
+
+Do not run `supabase db reset --linked`, `supabase db push --include-seed`, `supabase migration repair`, or remote SQL editor schema changes unless a reviewed migration-history incident requires it.
+
+## Post-Deploy Checks
+
+Schema:
+
+- `profiles`
+- `reports`
+- `report_images`
+- `claims`
+- `handovers`
+- `audit_logs`
+- export tables when present on `main`
+
+Workflow functions:
+
+- report finalization/submission helpers
+- `review_report`
+- `set_report_custody_status`
+- `review_claim`
+- `complete_handover`
+
+Security:
+
+- RLS enabled on protected tables.
+- Anonymous users cannot read ownership evidence or private report characteristics.
+- `report-images` bucket remains private.
+- Signed image access works for public report images.
+- No service-role key exists in Vercel.
+
+Realtime:
+
+- `public.reports`, `public.claims`, and `public.handovers` are in `supabase_realtime`.
+- Private unrelated tables are not added.
+
+## Auth Settings
+
+Set Site URL to final Vercel production origin. Add exact redirect URLs used by the implemented callback flow. Keep localhost redirect URLs only for intentional development use.
+
+Verify:
+
+- registration confirmation email;
+- login and logout;
+- invalid/expired callback handling;
+- institutional email restriction;
+- profile verification behavior.
+
+Do not disable email confirmation to speed up testing.

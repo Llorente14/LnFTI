@@ -1,0 +1,33 @@
+-- One-time verifier/admin bootstrap template.
+-- Run only after the intended administrator registered normally and confirmed email.
+-- Replace the psql variable value outside this file:
+--   \set target_email 'admin.name.53524xxxx@stu.untar.ac.id'
+
+begin;
+
+create temp table bootstrap_target as
+select users.id
+from auth.users
+join public.profiles on profiles.id = users.id
+where lower(users.email) = lower(:'target_email')
+  and users.email_confirmed_at is not null;
+
+do $$
+declare
+  match_count integer;
+begin
+  select count(*) into match_count from bootstrap_target;
+
+  if match_count <> 1 then
+    raise exception 'expected exactly one confirmed user, found %', match_count;
+  end if;
+end
+$$;
+
+update public.profiles
+set role = 'admin'::public.application_role,
+    verification_status = 'VERIFIED'::public.verification_status,
+    updated_at = now()
+where id = (select id from bootstrap_target);
+
+commit;
