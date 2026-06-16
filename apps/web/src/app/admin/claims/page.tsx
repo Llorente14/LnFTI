@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ClaimStatusBadge } from "@/components/claims/claim-status-badge";
+import { AdminClaimsRealtime } from "@/components/realtime/admin-claims-realtime";
 import { CLAIM_STATUSES, type ClaimStatus } from "@/lib/claims/validation";
 import { REPORT_CATEGORIES } from "@/lib/reports/constants";
 import { getPendingClaims, type AdminClaimStatus } from "@/lib/admin/claim-review";
@@ -78,6 +79,8 @@ export default async function AdminClaimsPage({ searchParams }: AdminClaimsPageP
           Default menampilkan klaim PENDING paling lama lebih dulu. Overdue berarti pending lebih dari 3 hari.
         </p>
       </div>
+
+      <AdminClaimsRealtime />
 
       <form action="/admin/claims" className="mt-6 rounded-lg border bg-surface p-4 sm:p-5">
         <div className="grid gap-4 md:grid-cols-4">

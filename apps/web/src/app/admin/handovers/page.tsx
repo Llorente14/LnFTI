@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminHandoversRealtime } from "@/components/realtime/admin-handovers-realtime";
 import { getCompletedHandovers, getPendingHandovers } from "@/lib/admin/handover";
 
 export const metadata = { title: "Serah-Terima" };
@@ -61,6 +62,8 @@ export default async function AdminHandoversPage({ searchParams }: AdminHandover
           Selesaikan barang yang klaimnya sudah disetujui. Handover hanya diproses dari halaman detail klaim.
         </p>
       </div>
+
+      <AdminHandoversRealtime />
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
         <article className="rounded-lg border bg-surface p-5">

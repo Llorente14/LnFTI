@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminReportsRealtime } from "@/components/realtime/admin-reports-realtime";
 import { getPendingReviewReports, type AdminReportType } from "@/lib/admin/report-review";
 import { requireRole } from "@/lib/auth/server";
 import { REPORT_CATEGORIES, REPORT_TYPES } from "@/lib/reports/constants";
@@ -70,6 +71,8 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
           Laporan paling lama tampil lebih dulu agar review berjalan adil.
         </p>
       </div>
+
+      <AdminReportsRealtime />
 
       <form action="/admin/reports" className="mt-6 rounded-lg border bg-surface p-4 sm:p-5">
         <div className="grid gap-4 md:grid-cols-3">

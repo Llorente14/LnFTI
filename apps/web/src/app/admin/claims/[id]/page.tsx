@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ClaimStatusBadge } from "@/components/claims/claim-status-badge";
+import { AdminClaimsRealtime } from "@/components/realtime/admin-claims-realtime";
 import { ReportTypeBadge } from "@/components/reports/report-status-badge";
 import { getClaimHandover } from "@/lib/admin/handover";
 import { isHandoverEligible } from "@/lib/admin/handover-validation";
@@ -77,6 +78,8 @@ export default async function AdminClaimDetailPage({ params }: AdminClaimDetailP
       <Link href="/admin/claims" className="font-heading text-sm font-semibold text-primary hover:text-primary-strong">
         Kembali ke queue klaim
       </Link>
+
+      <AdminClaimsRealtime claimId={claim.id} reportId={claim.report?.id ?? null} />
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">

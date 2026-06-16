@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AdminReportsRealtime } from "@/components/realtime/admin-reports-realtime";
 import { ReportTypeBadge } from "@/components/reports/report-status-badge";
 import { ALL_CUSTODY_STATUSES, type CustodyStatus } from "@/lib/admin/report-review-validation";
 import {
@@ -103,6 +104,8 @@ export default async function AdminReportDetailPage({ params }: AdminReportDetai
       <Link href="/admin/reports" className="font-heading text-sm font-semibold text-primary hover:text-primary-strong">
         Kembali ke queue
       </Link>
+
+      <AdminReportsRealtime reportId={report.id} />
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">
