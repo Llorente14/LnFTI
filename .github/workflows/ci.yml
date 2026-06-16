@@ -175,7 +175,31 @@ jobs:
 
       - name: Run complete MVP integration test
         shell: bash
-        run: npm --prefix apps/web run test:mvp-integration
+        run: |
+          set -o pipefail
+          npm --prefix apps/web run test:mvp-integration 2>&1 | tee /tmp/lnfti-mvp-output.log
+
+      - name: Build safe MVP failure summary
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f /tmp/lnfti-mvp-output.log ]; then
+            grep -E '^[[:space:]]*(# Subtest:|not ok [0-9]+ - )' /tmp/lnfti-mvp-output.log > /tmp/lnfti-mvp-safe.log || true
+          fi
+          if [ -s /tmp/lnfti-mvp-safe.log ]; then
+            cat /tmp/lnfti-mvp-safe.log
+          else
+            echo "No static subtest summary was available." > /tmp/lnfti-mvp-safe.log
+          fi
+
+      - name: Upload safe MVP failure summary
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mvp-failure-summary
+          path: /tmp/lnfti-mvp-safe.log
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Stop web
         if: always()
