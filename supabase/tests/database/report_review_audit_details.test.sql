@@ -43,6 +43,12 @@ update public.profiles
 set role = 'verifier'::public.application_role
 where id = '53500000-0000-0000-0000-000000000128';
 
+update public.profiles
+set
+  verification_status = 'VERIFIED'::public.profile_verification_status,
+  verified_at = coalesce(verified_at, now())
+where id = '53500000-0000-0000-0000-000000000028';
+
 insert into public.reports (
   id,
   reporter_id,

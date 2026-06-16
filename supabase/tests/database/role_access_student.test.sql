@@ -7,6 +7,15 @@ values
   ('00000000-0000-0000-0000-000000000301', 'authenticated', 'authenticated', 'studentone.535240301@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Studentone Access","nim":"535240301"}'::jsonb, now(), now()),
   ('00000000-0000-0000-0000-000000000302', 'authenticated', 'authenticated', 'studenttwo.825250302@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Studenttwo Access","nim":"825250302"}'::jsonb, now(), now());
 
+update public.profiles
+set
+  verification_status = 'VERIFIED'::public.profile_verification_status,
+  verified_at = coalesce(verified_at, now())
+where id in (
+  '00000000-0000-0000-0000-000000000301',
+  '00000000-0000-0000-0000-000000000302'
+);
+
 insert into public.reports (id, reporter_id, report_type, item_name, category, public_description, private_characteristics, building, event_at, report_status, custody_status, published_at)
 values
   ('10000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000301', 'LOST', 'Black wallet', 'Wallet', 'Black wallet lost near the library entrance', 'Initials are embossed inside', 'Gedung M', now(), 'PUBLISHED', 'UNKNOWN', now()),

@@ -144,10 +144,10 @@ select results_eq(
       'TI'::text,
       2024::smallint,
       'student'::text,
-      'PENDING_EMAIL'::text
+      'UNVERIFIED'::text
     )
   $$,
-  '535240143 derives TI, 2024, student, and PENDING_EMAIL'
+  '535240143 derives TI, 2024, student, and UNVERIFIED'
 );
 
 select lives_ok(
@@ -206,10 +206,10 @@ select results_eq(
       '825'::text,
       'SI'::text,
       2025::smallint,
-      'VERIFIED'::text
+      'UNVERIFIED'::text
     )
   $$,
-  '825250118 derives SI, 2025, and VERIFIED'
+  '825250118 derives SI, 2025, and UNVERIFIED'
 );
 
 select lives_ok(
@@ -227,18 +227,18 @@ select is(
     from public.profiles
     where id = '00000000-0000-0000-0000-000000000201'
   ),
-  'VERIFIED',
-  'confirming email updates profile verification status'
+  'UNVERIFIED',
+  'confirming email keeps profile unverified'
 );
 
-select isnt(
+select is(
   (
     select verified_at
     from public.profiles
     where id = '00000000-0000-0000-0000-000000000201'
   ),
   null,
-  'confirming email sets verified_at'
+  'confirming email does not set business verification timestamp'
 );
 
 select throws_ok(
@@ -359,7 +359,7 @@ select results_eq(
       '535'::text,
       'TI'::text,
       2024::smallint,
-      'PENDING_EMAIL'::text
+      'UNVERIFIED'::text
     )
   $$,
   'forged role and institutional metadata are ignored'
