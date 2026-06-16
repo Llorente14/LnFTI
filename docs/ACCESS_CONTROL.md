@@ -43,7 +43,25 @@ Submission and cancellation do not change `report_status`, `custody_status`, rev
 
 Claim decision reasons are required, trimmed, and 5-500 characters. Audit actions are `CLAIM_APPROVED`, `CLAIM_REJECTED`, `CLAIM_AUTO_REJECTED`, and `REPORT_MATCHING_STARTED`. Claim audit snapshots include only `claim_status`, `decided_by`, `decided_at`, `decision_reason`, and `expires_at`; report transition snapshots include only `report_status` and `custody_status`. Evidence is never written to audit logs.
 
-After approval, `MATCHING` reports remain visible publicly but no longer accept new claims. Report creators still cannot read claimant evidence by default; explicit consent would need a future feature. Physical handover, `COMPLETED`, `RESOLVED`, and custody `HANDED_OVER` remain deferred to `LNFTI-21`. Automatic claim expiry is not implemented here.
+After approval, `MATCHING` reports remain visible publicly but no longer accept new claims. Report creators still cannot read claimant evidence by default; explicit consent would need a future feature. Physical handover, `COMPLETED`, `RESOLVED`, and custody `HANDED_OVER` are handled by the transactional workflow below. Automatic claim expiry is not implemented here.
+
+### Transactional handover workflow
+
+`LNFTI-21` adds `public.complete_handover(uuid, text, text)` for verifier/admin physical handover. The browser sends only claim ID, handover location, and optional notes. The database derives `report_id` from `claims.report_id`, `recipient_id` from `claims.claimant_id`, `verifier_id` from `auth.uid()`, and `handover_at` from `transaction_timestamp()`.
+
+The final state machine is:
+
+```text
+Report:  PENDING_REVIEW -> PUBLISHED -> MATCHING -> RESOLVED
+Claim:   PENDING -> APPROVED -> COMPLETED
+Custody: UNKNOWN / WITH_FINDER / AT_DPM -> HANDED_OVER
+```
+
+Only an `APPROVED` claim on a `FOUND` report in `MATCHING` status may be completed. The report must not already be resolved or handed over, the claimant profile must exist, and one handover is allowed per claim/report through unique constraints plus RPC checks. The lock order is: read `claim.report_id`, lock the report row, lock all claims for the report ordered by claim ID, check existing handovers, re-read the target claim, then insert/update/audit.
+
+The RPC inserts one handover row, moves the claim to `COMPLETED`, moves the report to `RESOLVED`, sets custody to `HANDED_OVER`, and populates `resolved_at` using the same transaction timestamp. Audit events are `HANDOVER_COMPLETED`, `CLAIM_COMPLETED`, and `REPORT_RESOLVED_BY_HANDOVER`. Audit payloads exclude ownership evidence, private report details, contact details, and handover notes.
+
+Manual custody changes can set only `UNKNOWN`, `WITH_FINDER`, or `AT_DPM`. `set_report_custody_status()` rejects `HANDED_OVER`, already handed-over custody, `RESOLVED` reports, and `CLOSED` reports. After resolution the report disappears from public report views, while the claimant keeps private claim and handover history in `/me/claims`. Realtime remains deferred to `LNFTI-22`, and no service-role key or remote `supabase db push` is required.
 
 ### Report review workflow
 
@@ -51,7 +69,7 @@ After approval, `MATCHING` reports remain visible publicly but no longer accept 
 
 The RPC writes one append-only `audit_logs` row in the same transaction. Approval uses `REPORT_REVIEW_APPROVED`; rejection uses `REPORT_REVIEW_REJECTED`. The `before_data` and `after_data` payloads contain only `report_status`, `custody_status`, `reviewed_by`, `reviewed_at`, `rejection_reason`, and `published_at`. Metadata contains `reason`, `decision`, `report_type`, and `source`.
 
-`public.set_report_custody_status(uuid, public.custody_status, text)` updates only `custody_status` for non-draft reports and audits `REPORT_CUSTODY_CHANGED`. Supported custody values are `WITH_FINDER`, `AT_DPM`, `HANDED_OVER`, and `UNKNOWN`. `HANDED_OVER` is only a manual audited marker in this workflow; transactional handover rows remain deferred to `LNFTI-21`. Claim review remains deferred to `LNFTI-20`.
+`public.set_report_custody_status(uuid, public.custody_status, text)` updates only `custody_status` for non-draft, unresolved reports and audits `REPORT_CUSTODY_CHANGED`. After `LNFTI-21`, supported manual custody values are `WITH_FINDER`, `AT_DPM`, and `UNKNOWN`; `HANDED_OVER` is reserved for `public.complete_handover(uuid, text, text)`. Claim review is handled by `LNFTI-20`.
 
 Both RPCs grant `EXECUTE` only to `authenticated` and independently require `current_app_role()` to be `verifier` or `admin`. Authenticated students have execute privilege but are denied inside the functions. The `/admin`, `/admin/reports`, and `/admin/reports/[id]` pages repeat the verifier/admin role check before reading private report, reporter, location, or image data. Browser and Server Actions use the publishable key only; no service-role key is used. Public page revalidation runs after both review and custody mutations, while `public.public_reports` and `public.public_report_images` remain the only anonymous report sources. Apply the migration through normal local/CI reset flow; do not run remote `supabase db push`.
 
