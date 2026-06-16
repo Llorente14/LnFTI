@@ -112,7 +112,7 @@ This migration adds institutional reference data and trusted profile bootstrap l
 - `public.nim_prefixes`
 - `public.profile_verification_status`
 - profile columns for `nim`, `organization_id`, `nim_prefix`, `program_study_code`, `cohort_year`, `verification_status`, and `verified_at`
-- auth triggers for signup, email confirmation, and institutional email-change protection
+- auth triggers for signup and institutional email-change protection
 - minimum own-profile `SELECT` policy only
 
 Seeded UNTAR FTI rules:
@@ -123,6 +123,8 @@ Seeded UNTAR FTI rules:
 | Sistem Informasi | `825` | `24`, `25` | `stu.untar.ac.id` |
 
 The auth trigger accepts only signup metadata `full_name` and `nim`. Role, organization, program, cohort, and verification fields are derived inside the database and are not trusted from browser metadata.
+
+Auth email confirmation and profile verification are separate states. Supabase Auth owns `auth.users.email_confirmed_at`; the application keeps new profiles at `verification_status = 'UNVERIFIED'` until a verifier/admin business review changes them to `VERIFIED`. Email confirmation must not auto-verify profiles.
 
 Email confirmation links must point to the configured app origin and `/auth/confirm`. The route accepts only Supabase signup/email confirmation token types and rejects invite, magiclink, recovery, and email-change tokens.
 
@@ -138,7 +140,7 @@ Hosted Supabase confirmation template body:
 <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">Konfirmasi akun</a>
 ```
 
-`RedirectTo` is supplied by the server-side signup action and includes `/auth/confirm?next=<sanitized internal path>`.
+`RedirectTo` is supplied by the server-side signup/resend actions and includes `/auth/confirm?next=<sanitized internal path>`. In production, configure `APP_ORIGIN=https://ln-fti.vercel.app` so generated links target `https://ln-fti.vercel.app/auth/confirm` and never localhost.
 
 Broad role-based RLS remains delegated to LNFTI-14. This ticket adds only authenticated users reading their own profile. It does not add report, claim, handover, audit, export, storage, or verifier policies.
 
@@ -170,7 +172,7 @@ SUPABASE_DB_NAME=postgres \
 npm run test:auth-integration
 ```
 
-The integration suite verifies Supabase profile creation, pending email state, Mailpit confirmation link exchange, verified profile state, browser registration, SSR cookies, profile reload, app login, invalid-login generic error, logout, unauthenticated redirect, and duplicate email/NIM generic error behavior.
+The integration suite verifies Supabase profile creation, unverified profile state, Mailpit confirmation link exchange, browser registration, SSR cookies, profile reload, app login, `email_not_confirmed` messaging, invalid-login generic error, logout, unauthenticated redirect, and duplicate email/NIM generic error behavior.
 
 Remote database push was not performed for LNFTI-13.
 

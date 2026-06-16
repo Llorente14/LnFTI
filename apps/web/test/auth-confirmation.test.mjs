@@ -34,6 +34,7 @@ const confirmationExports = evaluateModule(transpile("src/lib/auth/confirmation.
 });
 
 const {
+  buildConfirmationCallbackUrl,
   buildConfirmationFailureUrl,
   buildConfirmationRedirectUrl,
   isAllowedConfirmationType,
@@ -51,6 +52,14 @@ test("confirmation route accepts only signup and email token types", () => {
 test("confirmation redirects use configured APP_ORIGIN only", () => {
   const appOrigin = "https://lnfti.example";
 
+  assert.equal(
+    buildConfirmationCallbackUrl(appOrigin, "/me/profile"),
+    "https://lnfti.example/auth/confirm?next=%2Fme%2Fprofile",
+  );
+  assert.equal(
+    buildConfirmationCallbackUrl(appOrigin, "https://evil.example"),
+    "https://lnfti.example/auth/confirm?next=%2Fme%2Fprofile",
+  );
   assert.equal(
     buildConfirmationRedirectUrl(appOrigin, "/me/profile"),
     "https://lnfti.example/me/profile",
@@ -73,4 +82,33 @@ test("registration action does not derive origin from spoofable request headers"
   assert.match(actionSource, /getAppOrigin/);
   assert.doesNotMatch(routeSource, /new URL\([^,]+,\s*request\.url/);
   assert.match(routeSource, /getAppOrigin/);
+});
+
+test("auth actions use one confirmation callback for signup and resend", () => {
+  const actionSource = readFileSync("src/lib/auth/actions.ts", "utf8");
+
+  assert.match(actionSource, /email_not_confirmed/);
+  assert.match(actionSource, /LOGIN_EMAIL_NOT_CONFIRMED_ERROR/);
+  assert.match(actionSource, /supabase\.auth\.resend/);
+  assert.match(actionSource, /buildConfirmationCallbackUrl\(appOrigin, next\)/);
+  assert.doesNotMatch(actionSource, /localhost/);
+});
+
+test("confirmation route copies Supabase SSR cookies onto redirect response", () => {
+  const routeSource = readFileSync("src/app/auth/confirm/route.ts", "utf8");
+
+  assert.match(routeSource, /createServerClient/);
+  assert.match(routeSource, /cookiesToSet\.push/);
+  assert.match(routeSource, /response\.cookies\.set/);
+  assert.match(routeSource, /verifyOtp/);
+});
+
+test("check-email is reserved for Auth email confirmation state", () => {
+  const serverSource = readFileSync("src/lib/auth/server.ts", "utf8");
+  const profilePageSource = readFileSync("src/app/me/profile/page.tsx", "utf8");
+
+  assert.match(serverSource, /email_confirmed_at/);
+  assert.match(serverSource, /redirect\("\/auth\/check-email"\)/);
+  assert.doesNotMatch(profilePageSource, /\/auth\/check-email/);
+  assert.match(profilePageSource, /ProfileUnavailable/);
 });

@@ -91,7 +91,7 @@ maybeTest("auth integration signs up institutional user and derives profile", as
       cohortYear: 2025,
     },
   );
-  assert.equal(profiles[0].verification_status, "PENDING_EMAIL");
+  assert.equal(profiles[0].verification_status, "UNVERIFIED");
 });
 
 maybeTest("auth integration protects private routes without session", async () => {
@@ -139,11 +139,17 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
     await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
     await page.getByRole("button", { name: "Daftar" }).click();
 
-    await page.waitForURL("**/auth/check-email");
+    await page.waitForURL((url) => url.pathname === "/auth/check-email", { waitUntil: "commit" });
     await page.goto(`${appUrl}/me/profile`);
     await page.waitForURL("**/login?next=%2Fme%2Fprofile");
 
-    await assertProfileStatus(identity.email, "PENDING_EMAIL");
+    await assertProfileStatus(identity.email, "UNVERIFIED");
+
+    await page.goto(`${appUrl}/login?next=%2Fme%2Fprofile`);
+    await page.getByLabel("Email institusional").fill(identity.email);
+    await page.getByLabel("Password").fill(identity.passphrase);
+    await page.getByRole("button", { name: "Masuk" }).click();
+    await page.getByText("Email belum dikonfirmasi.").waitFor();
 
     const confirmationUrl = await findConfirmationUrl(identity.email);
     assert.match(confirmationUrl, /\/auth\/confirm\?/);
@@ -153,7 +159,7 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
     await page.goto(confirmationUrl);
     await page.waitForURL("**/me/profile");
     await assertProfileVisible(page, identity.email, identity.nim);
-    await assertProfileStatus(identity.email, "VERIFIED");
+    await assertProfileStatus(identity.email, "UNVERIFIED");
 
     await page.reload();
     await assertProfileVisible(page, identity.email, identity.nim);
