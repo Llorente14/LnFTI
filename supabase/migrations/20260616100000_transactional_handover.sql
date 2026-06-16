@@ -226,7 +226,7 @@ begin
     raise exception 'handover_location must be between 3 and 200 characters';
   end if;
 
-  normalized_notes := pg_catalog.nullif(pg_catalog.btrim(coalesce(notes, '')), '');
+  normalized_notes := nullif(pg_catalog.btrim(coalesce(notes, '')), '');
 
   if normalized_notes is not null and pg_catalog.length(normalized_notes) > 1000 then
     raise exception 'notes must be at most 1000 characters';
