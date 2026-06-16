@@ -59,26 +59,59 @@ class ImageDetectionResponse(BaseModel):
             "examples": [
                 {
                     "model": "yolo26n.pt",
-                    "image": {
-                        "width": 1280,
-                        "height": 720,
-                    },
+                    "image": {"width": 1280, "height": 720},
                     "detections": [
                         {
                             "class_id": 39,
                             "label": "bottle",
                             "confidence": 0.9234,
-                            "bbox": {
-                                "x1": 120.5,
-                                "y1": 80.25,
-                                "x2": 542.75,
-                                "y2": 690.0,
-                            },
+                            "bbox": {"x1": 120.5, "y1": 80.25, "x2": 542.75, "y2": 690.0},
                             "suggested_category": "Botol & Wadah",
                         },
                     ],
                     "suggested_category": "Botol & Wadah",
                     "inference_ms": 68.42,
+                },
+            ],
+        },
+    )
+
+
+class OcrImageInfo(BaseModel):
+    width: int
+    height: int
+
+
+class OcrTextLine(BaseModel):
+    text: str
+    confidence: float
+
+
+class ImageOcrResponse(BaseModel):
+    engine: str
+    language: str
+    image: OcrImageInfo
+    lines: list[OcrTextLine]
+    full_text: str
+    average_confidence: float | None
+    inference_ms: float
+    truncated: bool = False
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "engine": "PP-OCRv5-mobile",
+                    "language": "en",
+                    "image": {"width": 1280, "height": 720},
+                    "lines": [
+                        {"text": "LOGITECH", "confidence": 0.9624},
+                        {"text": "M331", "confidence": 0.9186},
+                    ],
+                    "full_text": "LOGITECH\nM331",
+                    "average_confidence": 0.9405,
+                    "inference_ms": 142.35,
+                    "truncated": False,
                 },
             ],
         },
