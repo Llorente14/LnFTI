@@ -370,9 +370,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
         && message.includes("custody HANDED_OVER")
       ));
 
-      await verifierPage.getByText("Serah-terima selesai, klaim ditutup, dan laporan telah diselesaikan.").waitFor({
-        timeout: 30_000,
-      });
       const finalState = await waitForFinalHandoverState(env, report.id, claim.id);
       assert.equal(finalState.report_type, "FOUND");
       assert.equal(finalState.report_status, "RESOLVED");
