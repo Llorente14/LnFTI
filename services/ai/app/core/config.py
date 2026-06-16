@@ -29,11 +29,15 @@ class Settings(BaseSettings):
     yolo_iou_threshold: float = Field(default=0.70, gt=0, le=1)
     yolo_image_size: int = Field(default=640, ge=320, le=1280)
     yolo_max_detections: int = Field(default=20, ge=1, le=100)
+    ocr_language: str = Field(default="en", min_length=1)
+    ocr_device: str = Field(default="cpu", min_length=1)
+    ocr_min_confidence: float = Field(default=0.50, ge=0, le=1)
+    ocr_max_lines: int = Field(default=30, ge=1, le=100)
+    ocr_max_text_chars: int = Field(default=2000, ge=100, le=10_000)
+    ocr_text_detection_model: str = Field(default="PP-OCRv5_mobile_det", min_length=1)
+    ocr_text_recognition_model: str = Field(default="PP-OCRv5_mobile_rec", min_length=1)
 
-    model_config = SettingsConfigDict(
-        env_prefix="",
-        case_sensitive=False,
-    )
+    model_config = SettingsConfigDict(env_prefix="", case_sensitive=False)
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
@@ -55,14 +59,12 @@ class Settings(BaseSettings):
         normalized = [media_type.strip().lower() for media_type in value if media_type.strip()]
         if not normalized:
             raise ValueError("IMAGE_ALLOWED_MEDIA_TYPES must include at least one media type.")
-
         unsupported = sorted(set(normalized) - SUPPORTED_IMAGE_MEDIA_TYPES)
         if unsupported:
             raise ValueError(
                 "IMAGE_ALLOWED_MEDIA_TYPES contains unsupported values: "
                 + ", ".join(unsupported),
             )
-
         return normalized
 
     @field_validator("yolo_model_path", "yolo_device")
@@ -71,6 +73,19 @@ class Settings(BaseSettings):
         trimmed = value.strip()
         if not trimmed:
             raise ValueError("YOLO configuration value must not be empty.")
+        return trimmed
+
+    @field_validator(
+        "ocr_language",
+        "ocr_device",
+        "ocr_text_detection_model",
+        "ocr_text_recognition_model",
+    )
+    @classmethod
+    def validate_non_empty_ocr_string(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("OCR configuration value must not be empty.")
         return trimmed
 
     @field_validator("yolo_image_size")
