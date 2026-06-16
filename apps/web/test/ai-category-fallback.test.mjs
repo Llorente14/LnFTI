@@ -9,7 +9,8 @@ const normalizeFunction = schemasSource.match(
 
 test("mouse detection aliases map to Elektronik", () => {
   for (const label of ["mouse", "computer mouse", "wireless mouse", "optical mouse", "gaming mouse"]) {
-    assert.ok(schemasSource.includes(`${JSON.stringify(label)}: "Elektronik"`));
+    const property = label.includes(" ") ? JSON.stringify(label) : label;
+    assert.ok(schemasSource.includes(`${property}: "Elektronik"`));
   }
 });
 
