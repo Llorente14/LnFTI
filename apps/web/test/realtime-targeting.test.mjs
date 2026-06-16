@@ -146,3 +146,10 @@ test("boundary cleanup removes created channel and clears pending debounce", () 
   assert.match(boundary, /removeChannel\(channel\)/);
   assert.doesNotMatch(boundary, /removeAllChannels/);
 });
+
+test("boundary authenticates realtime before subscribing", () => {
+  const boundary = readFileSync("src/components/realtime/realtime-refresh-boundary.tsx", "utf8");
+
+  assert.match(boundary, /auth\.getSession\(\)/);
+  assert.match(boundary, /realtime\.setAuth\(data\.session\.access_token\)/);
+});
