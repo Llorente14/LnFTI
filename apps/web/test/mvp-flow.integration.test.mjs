@@ -82,6 +82,10 @@ async function assertFakeAiReady(env) {
   assert.equal(unauthorized.status, 401);
 }
 
+async function waitForRealtimeRefresh(page) {
+  await page.getByText("Data diperbarui.").waitFor({ timeout: 30_000 });
+}
+
 maybeTest("complete MVP flow verifies report, AI, claim, handover, public privacy, and PWA smoke", { timeout: 180_000 }, async (t) => {
   const env = requireLocalIntegrationEnv();
   const finder = createInstitutionalIdentity("Finder", "535");
@@ -247,7 +251,7 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await publicReportCard.getByRole("heading", { name: itemName }).waitFor();
       await publicReportCard.getByRole("link").click();
       await publicPage.getByRole("heading", { name: itemName }).waitFor();
-      await publicPage.getByText("Elektronik").waitFor();
+      await publicPage.locator("aside dl").getByText("Elektronik", { exact: true }).waitFor();
       await publicPage.getByText(publicDescription).waitFor();
       await publicPage.locator("img").first().waitFor();
       await expect(publicPage.locator("body")).not.toContainText(initialPrivate);
@@ -314,6 +318,8 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.notEqual(approved.custody_status, "HANDED_OVER");
       assert.equal(approved.handover_count, 0);
 
+      await waitForRealtimeRefresh(claimantPage);
+      await claimantPage.reload();
       await claimantPage.getByText("Klaim disetujui. Serah-terima fisik belum selesai", { exact: false }).waitFor({ timeout: 30_000 });
     });
 
@@ -328,11 +334,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
         && message.includes("menyelesaikan laporan")
         && message.includes("custody HANDED_OVER")
       ));
-      await verifierPage.getByText("Serah-terima selesai, klaim ditutup, dan laporan telah diselesaikan.").waitFor();
-
-      await claimantPage.getByText("Barang sudah diserahkan kepada Anda.").waitFor({ timeout: 30_000 });
-      await claimantPage.getByText(handoverLocation).waitFor();
-      await claimantPage.getByText(handoverNote).waitFor();
 
       const finalState = await withDatabase(env, async (client) => queryOne(
         client,
@@ -375,6 +376,15 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.equal(finalState.handover_location, handoverLocation);
       assert.equal(finalState.report_handover_count, 1);
       assert.equal(finalState.claim_handover_count, 1);
+
+      await verifierPage.getByText("Status serah-terima").waitFor({ timeout: 30_000 });
+      await verifierPage.getByText("Selesai").first().waitFor();
+
+      await waitForRealtimeRefresh(claimantPage);
+      await claimantPage.reload();
+      await claimantPage.getByText("Barang sudah diserahkan kepada Anda.").waitFor({ timeout: 30_000 });
+      await claimantPage.getByText(handoverLocation).waitFor();
+      await claimantPage.getByText(handoverNote).waitFor();
     });
 
     await t.test("final public state and audit invariants", async () => {
