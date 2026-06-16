@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LnFTI L and F monogram">
+  <rect width="512" height="512" rx="96" fill="#6B1220"/>
+  <circle cx="256" cy="256" r="178" fill="none" stroke="#C8963A" stroke-width="28"/>
+  <path d="M158 142h54v185h101v47H158z" fill="#F2C97A"/>
+  <path d="M288 142h128v48h-74v55h62v48h-62v81h-54z" fill="#FFFFFF"/>
+  <circle cx="257" cy="256" r="16" fill="#C8963A"/>
+</svg>
