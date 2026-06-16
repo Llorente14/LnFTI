@@ -171,10 +171,11 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
 
       await finderPage.getByRole("button", { name: "Analisis AI" }).click();
       await finderPage.getByText("Kategori saran").waitFor();
-      await finderPage.getByText("Elektronik", { exact: true }).waitFor();
-      await finderPage.getByText("laptop - 93%").waitFor();
-      await finderPage.getByText("LOGITECH - 96%").waitFor();
-      await finderPage.getByText("M331 - 92%").waitFor();
+      const analysisPanel = finderPage.locator('[aria-live="polite"]').filter({ hasText: "Kategori saran" });
+      await analysisPanel.getByText("Elektronik", { exact: true }).waitFor();
+      await analysisPanel.getByText("laptop - 93%").waitFor();
+      await analysisPanel.getByText("LOGITECH - 96%").waitFor();
+      await analysisPanel.getByText("M331 - 92%").waitFor();
       await expect(finderPage.getByLabel("Kategori")).toHaveValue("Lainnya");
       await expect(finderPage.getByLabel("Ciri privat kepemilikan")).not.toHaveValue(/LOGITECH/);
 
