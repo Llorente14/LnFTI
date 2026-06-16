@@ -30,7 +30,7 @@ begin
       and profiles.role = 'student'::public.application_role
       and profiles.verification_status = 'VERIFIED'::public.profile_verification_status
   ) then
-    raise exception 'handover recipient must be the verified student claimant for an approved or completed claim';
+    raise exception 'handover claim must belong to the report, match the recipient, and be approved or completed';
   end if;
 
   return new;
