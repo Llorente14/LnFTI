@@ -61,7 +61,35 @@ Only an `APPROVED` claim on a `FOUND` report in `MATCHING` status may be complet
 
 The RPC inserts one handover row, moves the claim to `COMPLETED`, moves the report to `RESOLVED`, sets custody to `HANDED_OVER`, and populates `resolved_at` using the same transaction timestamp. Audit events are `HANDOVER_COMPLETED`, `CLAIM_COMPLETED`, and `REPORT_RESOLVED_BY_HANDOVER`. Audit payloads exclude ownership evidence, private report details, contact details, and handover notes.
 
-Manual custody changes can set only `UNKNOWN`, `WITH_FINDER`, or `AT_DPM`. `set_report_custody_status()` rejects `HANDED_OVER`, already handed-over custody, `RESOLVED` reports, and `CLOSED` reports. After resolution the report disappears from public report views, while the claimant keeps private claim and handover history in `/me/claims`. Realtime remains deferred to `LNFTI-22`, and no service-role key or remote `supabase db push` is required.
+Manual custody changes can set only `UNKNOWN`, `WITH_FINDER`, or `AT_DPM`. `set_report_custody_status()` rejects `HANDED_OVER`, already handed-over custody, `RESOLVED` reports, and `CLOSED` reports. After resolution the report disappears from public report views, while the claimant keeps private claim and handover history in `/me/claims`. No service-role key or remote `supabase db push` is required.
+
+### Targeted Realtime refresh
+
+`LNFTI-22` enables Postgres Changes through the existing `supabase_realtime` publication only for:
+
+```text
+public.reports
+public.claims
+public.handovers
+```
+
+Realtime is informational only. It never mutates reports, claims, or handovers; workflow writes remain inside `review_report()`, `set_report_custody_status()`, `review_claim()`, and `complete_handover()`. Client callbacks debounce relevant events and call `router.refresh()`, so server queries and RLS remain authoritative for all displayed data.
+
+Subscribed pages:
+
+| Page | Tables and events | Filters |
+| --- | --- | --- |
+| `/me/claims` | `claims UPDATE`, `handovers INSERT` | `claimant_id = auth user`, `recipient_id = auth user` |
+| `/admin` | `reports INSERT/UPDATE`, `claims INSERT/UPDATE`, `handovers INSERT` | verifier/admin RLS |
+| `/admin/reports` | `reports INSERT/UPDATE` | verifier/admin RLS plus status relevance |
+| `/admin/reports/[id]` | `reports UPDATE` | `id = report_id` |
+| `/admin/claims` | `claims INSERT/UPDATE` | verifier/admin RLS plus status relevance |
+| `/admin/claims/[id]` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | `id = claim_id`, related `report_id`, `claim_id = claim_id` |
+| `/admin/handovers` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | verifier/admin RLS plus handover relevance |
+
+Student channels use user-specific filters. Detail channels use row-specific filters. Admin channels rely on existing verifier/admin RLS and do not weaken table policies. Public browsing does not use a global Realtime feed.
+
+Subscriptions use only `INSERT` and `UPDATE`, never `*`, and never subscribe to `audit_logs`, `profiles`, `report_images`, `export_jobs`, `storage.objects`, or `auth.users`. Realtime payloads are not logged and are not copied into domain UI state; private evidence, private report details, handover notes, NIM, contacts, cookies, and tokens stay outside client payload handling. Channels are removed with `removeChannel()` on unmount and pending debounce timers are cleared. If Realtime disconnects, pages stay usable and fall back to normal browser reload or manual refresh on detail pages.
 
 ### Report review workflow
 
