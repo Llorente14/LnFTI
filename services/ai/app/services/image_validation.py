@@ -1,11 +1,10 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from io import BytesIO
 import warnings
 
 from fastapi import UploadFile, status
 from PIL import Image, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, settings
 
@@ -75,23 +74,13 @@ async def read_upload_limited(
         if size_bytes > max_bytes:
             raise ImageValidationError(
                 "IMAGE_TOO_LARGE",
-                "Ukuran gambar melebihi batas 5 MiB.",
+                "Ukuran gambar melebihi batas yang diizinkan.",
                 status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             )
 
         chunks.append(chunk)
 
     return b"".join(chunks)
-
-
-@contextmanager
-def pillow_pixel_limit(max_pixels: int) -> Iterator[None]:
-    previous_limit = Image.MAX_IMAGE_PIXELS
-    Image.MAX_IMAGE_PIXELS = max_pixels
-    try:
-        yield
-    finally:
-        Image.MAX_IMAGE_PIXELS = previous_limit
 
 
 def check_dimensions(width: int, height: int, max_pixels: int) -> None:
@@ -132,7 +121,7 @@ def validate_image_bytes(
         )
 
     try:
-        with pillow_pixel_limit(max_pixels), warnings.catch_warnings():
+        with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
 
             with BytesIO(content) as stream:
@@ -201,7 +190,8 @@ async def validate_upload_file(
     )
     content = await read_upload_limited(upload, app_settings.image_max_bytes)
 
-    return validate_image_bytes(
+    return await run_in_threadpool(
+        validate_image_bytes,
         content,
         media_type,
         app_settings.image_max_pixels,
