@@ -241,8 +241,11 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.equal(published.reviewed_by, actorIds.verifierId);
 
       await publicPage.goto(`${env.appUrl}/reports?q=${encodeURIComponent(itemName)}`);
-      await publicPage.getByText(itemName).waitFor();
-      await publicPage.getByRole("link", { name: new RegExp(itemName) }).click();
+      const publicReportCard = publicPage.locator("article").filter({
+        has: publicPage.getByRole("heading", { name: itemName }),
+      });
+      await publicReportCard.getByRole("heading", { name: itemName }).waitFor();
+      await publicReportCard.getByRole("link").click();
       await publicPage.getByRole("heading", { name: itemName }).waitFor();
       await publicPage.getByText("Elektronik").waitFor();
       await publicPage.getByText(publicDescription).waitFor();
@@ -263,6 +266,7 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await claimantPage.waitForURL("**/me/claims?created=1");
       await claimantPage.getByText("Klaim berhasil dikirim").waitFor();
       await claimantPage.getByText(claimEvidence).waitFor();
+      await claimantPage.getByText("Pembaruan langsung aktif").waitFor({ timeout: 15_000 });
 
       claim = await withDatabase(env, async (client) => queryOne(
         client,
@@ -287,8 +291,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await verifierPage.getByRole("button", { name: "Setujui" }).click();
       await verifierPage.getByText("Klaim disetujui dan laporan masuk proses pencocokan.").waitFor();
 
-      await claimantPage.getByText("Klaim disetujui. Serah-terima fisik belum selesai", { exact: false }).waitFor({ timeout: 30_000 });
-
       const approved = await withDatabase(env, async (client) => queryOne(
         client,
         `
@@ -311,9 +313,12 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.equal(approved.report_status, "MATCHING");
       assert.notEqual(approved.custody_status, "HANDED_OVER");
       assert.equal(approved.handover_count, 0);
+
+      await claimantPage.getByText("Klaim disetujui. Serah-terima fisik belum selesai", { exact: false }).waitFor({ timeout: 30_000 });
     });
 
     await t.test("verifier completes transactional handover and claimant sees completion by Realtime", async () => {
+      await claimantPage.getByText("Pembaruan langsung aktif").waitFor({ timeout: 15_000 });
       await verifierPage.goto(`${env.appUrl}/admin/claims/${claim.id}`);
       await verifierPage.getByLabel("Lokasi serah-terima").fill(handoverLocation);
       await verifierPage.getByLabel("Catatan serah-terima (opsional)").fill(handoverNote);
