@@ -82,6 +82,47 @@ async function assertFakeAiReady(env) {
   assert.equal(unauthorized.status, 401);
 }
 
+async function waitForFinalHandoverState(env, reportId, claimId) {
+  const deadline = Date.now() + 20_000;
+
+  while (Date.now() < deadline) {
+    const finalState = await withDatabase(env, async (client) => queryOptional(
+      client,
+      `
+        select
+          reports.report_type::text,
+          reports.report_status::text,
+          reports.custody_status::text,
+          reports.resolved_at,
+          claims.claim_status::text,
+          claims.decided_by,
+          handovers.report_id,
+          handovers.id as handover_id,
+          handovers.claim_id,
+          handovers.recipient_id,
+          handovers.verifier_id,
+          handovers.handover_at,
+          handovers.handover_location,
+          (select count(*)::int from public.handovers where report_id = reports.id) as report_handover_count,
+          (select count(*)::int from public.handovers where claim_id = claims.id) as claim_handover_count
+        from public.reports
+        join public.claims on claims.report_id = reports.id
+        join public.handovers on handovers.claim_id = claims.id
+        where reports.id = $1 and claims.id = $2
+      `,
+      [reportId, claimId],
+    ));
+
+    if (finalState) {
+      return finalState;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error("MVP handover final state was not persisted.");
+}
+
 maybeTest("complete MVP flow verifies report, AI, claim, handover, public privacy, and PWA smoke", { timeout: 180_000 }, async (t) => {
   const env = requireLocalIntegrationEnv();
   const finder = createInstitutionalIdentity("Finder", "535");
@@ -329,32 +370,10 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
         && message.includes("custody HANDED_OVER")
       ));
 
-      const finalState = await withDatabase(env, async (client) => queryOne(
-        client,
-        `
-          select
-            reports.report_type::text,
-            reports.report_status::text,
-            reports.custody_status::text,
-            reports.resolved_at,
-            claims.claim_status::text,
-            claims.decided_by,
-            handovers.report_id,
-            handovers.id as handover_id,
-            handovers.claim_id,
-            handovers.recipient_id,
-            handovers.verifier_id,
-            handovers.handover_at,
-            handovers.handover_location,
-            (select count(*)::int from public.handovers where report_id = reports.id) as report_handover_count,
-            (select count(*)::int from public.handovers where claim_id = claims.id) as claim_handover_count
-          from public.reports
-          join public.claims on claims.report_id = reports.id
-          join public.handovers on handovers.claim_id = claims.id
-          where reports.id = $1 and claims.id = $2
-        `,
-        [report.id, claim.id],
-      ));
+      await verifierPage.getByText("Serah-terima selesai, klaim ditutup, dan laporan telah diselesaikan.").waitFor({
+        timeout: 30_000,
+      });
+      const finalState = await waitForFinalHandoverState(env, report.id, claim.id);
       assert.equal(finalState.report_type, "FOUND");
       assert.equal(finalState.report_status, "RESOLVED");
       assert.equal(finalState.custody_status, "HANDED_OVER");
