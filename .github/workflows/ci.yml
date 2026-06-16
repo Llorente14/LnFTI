@@ -112,6 +112,7 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "APP_ORIGIN=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "RUN_SUPABASE_AUTH_INTEGRATION=1" >> "$GITHUB_ENV"
+          echo "RUN_MVP_INTEGRATION=1" >> "$GITHUB_ENV"
           echo "NEXT_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "MAILPIT_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
           echo "SUPABASE_DB_HOST=127.0.0.1" >> "$GITHUB_ENV"
@@ -119,6 +120,14 @@ jobs:
           echo "SUPABASE_DB_USER=postgres" >> "$GITHUB_ENV"
           echo "SUPABASE_DB_PASSWORD=postgres" >> "$GITHUB_ENV"
           echo "SUPABASE_DB_NAME=postgres" >> "$GITHUB_ENV"
+
+      - name: Generate local AI integration token
+        shell: bash
+        run: |
+          AI_TOKEN="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")"
+          echo "::add-mask::$AI_TOKEN"
+          echo "AI_INTERNAL_API_TOKEN=$AI_TOKEN" >> "$GITHUB_ENV"
+          echo "AI_SERVICE_URL=http://127.0.0.1:18080" >> "$GITHUB_ENV"
 
       - name: Install web dependencies for auth integration
         shell: bash
@@ -131,6 +140,20 @@ jobs:
       - name: Build web for auth integration
         shell: bash
         run: npm --prefix apps/web run build
+
+      - name: Start fake AI service
+        shell: bash
+        run: |
+          node apps/web/test/fixtures/fake-ai-server.mjs > /tmp/lnfti-fake-ai.log 2>&1 &
+          echo "$!" > /tmp/lnfti-fake-ai.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/lnfti-fake-ai.log
+          exit 1
 
       - name: Start web for auth integration
         shell: bash
@@ -150,12 +173,48 @@ jobs:
         shell: bash
         run: npm --prefix apps/web run test:auth-integration
 
+      - name: Run complete MVP integration test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm --prefix apps/web run test:mvp-integration 2>&1 | tee /tmp/lnfti-mvp-output.log
+
+      - name: Build safe MVP failure summary
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f /tmp/lnfti-mvp-output.log ]; then
+            grep -E '^[[:space:]]*(# Subtest:|not ok [0-9]+ - )' /tmp/lnfti-mvp-output.log > /tmp/lnfti-mvp-safe.log || true
+          fi
+          if [ -s /tmp/lnfti-mvp-safe.log ]; then
+            cat /tmp/lnfti-mvp-safe.log
+          else
+            echo "No static subtest summary was available." > /tmp/lnfti-mvp-safe.log
+          fi
+
+      - name: Upload safe MVP failure summary
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mvp-failure-summary
+          path: /tmp/lnfti-mvp-safe.log
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Stop web
         if: always()
         shell: bash
         run: |
           if [ -f /tmp/lnfti-web.pid ]; then
             kill "$(cat /tmp/lnfti-web.pid)" || true
+          fi
+
+      - name: Stop fake AI service
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/lnfti-fake-ai.pid ]; then
+            kill "$(cat /tmp/lnfti-fake-ai.pid)" || true
           fi
 
       - name: Stop local Supabase

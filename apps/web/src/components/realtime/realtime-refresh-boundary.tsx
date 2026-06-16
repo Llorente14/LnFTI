@@ -58,7 +58,7 @@ export function RealtimeRefreshBoundary({
   useEffect(() => {
     let mounted = true;
     const supabase = createClient();
-    const channel = supabase.channel(config.channelName);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     const debouncer = createRefreshDebouncer(() => {
       if (!mounted) {
         return;
@@ -74,40 +74,58 @@ export function RealtimeRefreshBoundary({
       router.refresh();
     }, debounceMs);
 
-    for (const subscription of config.subscriptions) {
-      channel.on(
-        "postgres_changes",
-        {
-          event: subscription.event,
-          schema: subscription.schema,
-          table: subscription.table,
-          filter: subscription.filter,
-        },
-        (payload) => {
-          const minimalPayload: RealtimePayload = {
-            eventType: payload.eventType,
-            schema: payload.schema,
-            table: payload.table ?? subscription.table,
-            new: minimalRealtimeRow(payload.new),
-          };
+    async function subscribe() {
+      const { data } = await supabase.auth.getSession();
 
-          if (isSubscriptionRelevant(subscription, minimalPayload)) {
-            debouncer.schedule();
-          }
-        },
-      );
+      if (!mounted) {
+        return;
+      }
+
+      if (data.session?.access_token) {
+        supabase.realtime.setAuth(data.session.access_token);
+      }
+
+      channel = supabase.channel(config.channelName);
+
+      for (const subscription of config.subscriptions) {
+        channel.on(
+          "postgres_changes",
+          {
+            event: subscription.event,
+            schema: subscription.schema,
+            table: subscription.table,
+            filter: subscription.filter,
+          },
+          (payload) => {
+            const minimalPayload: RealtimePayload = {
+              eventType: payload.eventType,
+              schema: payload.schema,
+              table: payload.table ?? subscription.table,
+              new: minimalRealtimeRow(payload.new),
+            };
+
+            if (isSubscriptionRelevant(subscription, minimalPayload)) {
+              debouncer.schedule();
+            }
+          },
+        );
+      }
+
+      channel.subscribe((status) => {
+        if (mounted) {
+          setSubscriptionStatus(status);
+        }
+      });
     }
 
-    channel.subscribe((status) => {
-      if (mounted) {
-        setSubscriptionStatus(status);
-      }
-    });
+    void subscribe();
 
     return () => {
       mounted = false;
       debouncer.cancel();
-      void supabase.removeChannel(channel);
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
     };
   }, [config.channelName, config.subscriptions, configKey, debounceMs, mode, refreshMessage, router]);
 
