@@ -76,7 +76,8 @@ async function handleNavigation(request) {
 }
 
 async function handleCacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
 
   if (cached) {
     return cached;
@@ -85,7 +86,6 @@ async function handleCacheFirst(request, cacheName) {
   const response = await fetch(request);
 
   if (canCacheResponse(response)) {
-    const cache = await caches.open(cacheName);
     await cache.put(request, response.clone());
   }
 
