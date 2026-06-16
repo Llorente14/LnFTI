@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isVerifiedStudentProfile } from "@/lib/auth/profile-verification";
 import { getCurrentProfile, getCurrentUser, requireUser } from "@/lib/auth/server";
 import { CLAIM_STATUSES, type ClaimStatus } from "@/lib/claims/validation";
 import type { PublicReport } from "@/lib/reports/public-queries";
@@ -82,11 +83,15 @@ export async function getClaimEligibilityForReport(report: PublicReport): Promis
 
   const profile = await getCurrentProfile();
 
-  if (!profile || profile.role !== "student") {
+  if (!profile) {
     return { state: "non_student" };
   }
 
-  if (profile.verification_status !== "VERIFIED") {
+  if (profile.role !== "student") {
+    return { state: "non_student" };
+  }
+
+  if (!isVerifiedStudentProfile(profile)) {
     return { state: "unverified" };
   }
 

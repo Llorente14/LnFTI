@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isVerifiedProfileStatus } from "@/lib/auth/profile-verification";
 import type { ClaimStatus } from "@/lib/claims/validation";
 import type { AdminCustodyStatus, AdminReportStatus, AdminReportType } from "@/lib/admin/report-review";
 
@@ -42,6 +43,6 @@ export function isHandoverEligible(input: HandoverEligibilityInput) {
     && input.reportType === "FOUND"
     && input.reportStatus === "MATCHING"
     && input.custodyStatus !== "HANDED_OVER"
-    && input.claimantVerificationStatus === "VERIFIED"
+    && isVerifiedProfileStatus(input.claimantVerificationStatus)
     && !input.hasHandover;
 }

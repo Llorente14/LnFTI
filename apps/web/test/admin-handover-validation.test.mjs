@@ -15,16 +15,22 @@ function transpile(path) {
   }).outputText;
 }
 
-function loadModule(path) {
+function loadModule(path, customRequire = require) {
   const moduleRecord = { exports: {} };
   const evaluateModule = new Function("exports", "module", "require", transpile(path));
 
-  evaluateModule(moduleRecord.exports, moduleRecord, require);
+  evaluateModule(moduleRecord.exports, moduleRecord, customRequire);
 
   return moduleRecord.exports;
 }
 
-const validation = loadModule("src/lib/admin/handover-validation.ts");
+const profileVerification = loadModule("src/lib/auth/profile-verification.ts");
+const validation = loadModule("src/lib/admin/handover-validation.ts", (specifier) => {
+  if (specifier === "@/lib/auth/profile-verification") {
+    return profileVerification;
+  }
+  return require(specifier);
+});
 const claimId = "21100000-0000-4000-8000-000000000001";
 
 test("valid handover form passes and trims fields", () => {
@@ -60,7 +66,7 @@ test("eligibility helper accepts approved matching found claim for verified clai
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
-    claimantVerificationStatus: "VERIFIED",
+    claimantVerificationStatus: "verified",
     hasHandover: false,
   }), true);
 });
@@ -71,7 +77,7 @@ test("eligibility helper rejects unverified claimant", () => {
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
-    claimantVerificationStatus: "UNVERIFIED",
+    claimantVerificationStatus: "pending",
     hasHandover: false,
   }), false);
 });
@@ -82,7 +88,7 @@ test("eligibility helper rejects non-approved or completed states", () => {
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
-    claimantVerificationStatus: "VERIFIED",
+    claimantVerificationStatus: "verified",
     hasHandover: false,
   }), false);
   assert.equal(validation.isHandoverEligible({
@@ -90,7 +96,7 @@ test("eligibility helper rejects non-approved or completed states", () => {
     reportType: "FOUND",
     reportStatus: "RESOLVED",
     custodyStatus: "HANDED_OVER",
-    claimantVerificationStatus: "VERIFIED",
+    claimantVerificationStatus: "verified",
     hasHandover: true,
   }), false);
 });
