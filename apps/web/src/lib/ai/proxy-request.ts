@@ -6,6 +6,7 @@ import {
   REPORT_IMAGE_ALLOWED_MIME_TYPES,
   REPORT_IMAGE_MAX_BYTES,
 } from "@/lib/reports/constants";
+import { isVerifiedStudentProfile } from "@/lib/auth/profile-verification";
 import { createClient } from "@/lib/supabase/server";
 
 export class AiProxyRequestError extends Error {
@@ -37,12 +38,7 @@ export async function requireVerifiedStudent(): Promise<void> {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (
-    profileError
-    || !profile
-    || profile.role !== "student"
-    || profile.verification_status !== "VERIFIED"
-  ) {
+  if (profileError || !isVerifiedStudentProfile(profile)) {
     throw new AiProxyRequestError(403, "FORBIDDEN", "Permintaan tidak diizinkan.");
   }
 }

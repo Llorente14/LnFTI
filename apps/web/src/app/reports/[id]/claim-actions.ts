@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { isVerifiedStudentProfile } from "@/lib/auth/profile-verification";
 import { getCurrentProfile, requireUser } from "@/lib/auth/server";
 import { claimSubmissionSchema } from "@/lib/claims/validation";
 import { createClient } from "@/lib/supabase/server";
@@ -33,7 +34,7 @@ export async function submitOwnershipClaimAction(
   const user = await requireUser("/reports");
   const profile = await getCurrentProfile();
 
-  if (!profile || profile.role !== "student" || profile.verification_status !== "VERIFIED") {
+  if (!isVerifiedStudentProfile(profile)) {
     return { status: "error", message: "Akun Anda belum memenuhi syarat untuk mengajukan klaim." };
   }
 

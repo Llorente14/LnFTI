@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { isVerifiedProfileStatus } from "@/lib/auth/profile-verification";
 import { getCurrentProfileResult, requireUser } from "@/lib/auth/server";
 import { logoutAction } from "@/lib/auth/actions";
 
@@ -14,7 +15,7 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function profileStatusLabel(status: string): string {
-  if (status === "VERIFIED") {
+  if (isVerifiedProfileStatus(status)) {
     return "Terverifikasi";
   }
 
