@@ -28,7 +28,6 @@ def test_normalization_filters_low_confidence_and_empty_lines() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert [line.text for line in lines] == ["LOGITECH", "M331"]
     assert [line.confidence for line in lines] == [0.9624, 0.9186]
     assert full_text == "LOGITECH\nM331"
@@ -43,7 +42,6 @@ def test_normalization_collapses_internal_whitespace() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert lines[0].text == "hello world"
     assert full_text == "hello world"
 
@@ -55,10 +53,22 @@ def test_normalization_ignores_non_finite_confidence() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert [line.text for line in lines] == ["good"]
     assert full_text == "good"
     assert average_confidence == 0.88
+
+
+def test_non_string_text_values_are_ignored() -> None:
+    lines, full_text, average_confidence, truncated = normalize_ocr_results(
+        [{"rec_texts": [None, 123, " VALID "], "rec_scores": [0.99, 0.98, 0.97]}],
+        min_confidence=0.50,
+        max_lines=30,
+        max_text_chars=2000,
+    )
+    assert [line.text for line in lines] == ["VALID"]
+    assert full_text == "VALID"
+    assert average_confidence == 0.97
+    assert truncated is False
 
 
 def test_no_recognized_text_normalizes_to_empty_result() -> None:
@@ -68,7 +78,6 @@ def test_no_recognized_text_normalizes_to_empty_result() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert lines == []
     assert full_text == ""
     assert average_confidence is None
@@ -82,7 +91,6 @@ def test_empty_result_collection_normalizes_to_empty_result() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert lines == []
     assert full_text == ""
     assert average_confidence is None
@@ -110,7 +118,6 @@ def test_maximum_line_count_is_enforced() -> None:
         max_lines=2,
         max_text_chars=2000,
     )
-
     assert [line.text for line in lines] == ["one", "two"]
     assert full_text == "one\ntwo"
     assert average_confidence == 0.85
@@ -124,7 +131,6 @@ def test_maximum_text_length_is_enforced() -> None:
         max_lines=30,
         max_text_chars=9,
     )
-
     assert [line.text for line in lines] == ["alpha", "bra"]
     assert full_text == "alpha\nbra"
     assert average_confidence == 0.85
@@ -141,7 +147,6 @@ def test_result_object_json_payload_is_supported() -> None:
         max_lines=30,
         max_text_chars=2000,
     )
-
     assert lines[0].text == "LOGITECH"
     assert full_text == "LOGITECH"
     assert average_confidence == 0.96
