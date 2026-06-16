@@ -1,6 +1,12 @@
 const SUPABASE_URL_ENV = "NEXT_PUBLIC_SUPABASE_URL";
 const SUPABASE_PUBLISHABLE_KEY_ENV = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
 const APP_ORIGIN_ENV = "APP_ORIGIN";
+const AI_SERVICE_URL_ENV = "AI_SERVICE_URL";
+const AI_INTERNAL_API_TOKEN_ENV = "AI_INTERNAL_API_TOKEN";
+const AI_REQUEST_TIMEOUT_MS_ENV = "AI_REQUEST_TIMEOUT_MS";
+const INSECURE_AI_TOKEN_PLACEHOLDERS = new Set([
+  "replace_with_at_least_32_random_characters",
+]);
 
 type PublicEnv = {
   supabaseUrl: string;
@@ -14,6 +20,18 @@ type PublicEnvInput = {
 
 type AppEnvInput = {
   appOrigin: string | undefined;
+};
+
+export type AiServiceEnv = {
+  aiServiceUrl: string;
+  aiInternalApiToken: string;
+  aiRequestTimeoutMs: number;
+};
+
+type AiServiceEnvInput = {
+  aiServiceUrl: string | undefined;
+  aiInternalApiToken: string | undefined;
+  aiRequestTimeoutMs: string | undefined;
 };
 
 function readRequiredValue(name: string, value: string | undefined): string {
@@ -74,6 +92,60 @@ function assertAppOrigin(value: string): string {
   return url.origin;
 }
 
+function assertOriginUrl(name: string, value: string): string {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid URL.`);
+  }
+
+  if (url.username || url.password) {
+    throw new Error(`${name} must not include username or password.`);
+  }
+
+  if (url.pathname !== "/" || url.search || url.hash) {
+    throw new Error(`${name} must include only scheme, host, and optional port.`);
+  }
+
+  const isLocalHost = ["localhost", "127.0.0.1"].includes(url.hostname);
+  if (url.protocol === "http:" && !isLocalHost) {
+    throw new Error(`${name} may use http only for localhost or 127.0.0.1.`);
+  }
+
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && isLocalHost)) {
+    throw new Error(`${name} must use https outside local development.`);
+  }
+
+  return url.origin;
+}
+
+function assertAiToken(value: string): string {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length < 32) {
+    throw new Error(`${AI_INTERNAL_API_TOKEN_ENV} must be at least 32 characters.`);
+  }
+
+  if (INSECURE_AI_TOKEN_PLACEHOLDERS.has(trimmedValue)) {
+    throw new Error(`${AI_INTERNAL_API_TOKEN_ENV} must be a generated secret, not an example placeholder.`);
+  }
+
+  return trimmedValue;
+}
+
+function assertAiTimeout(value: string | undefined): number {
+  const rawValue = value?.trim() || "120000";
+  const timeoutMs = Number.parseInt(rawValue, 10);
+
+  if (!Number.isInteger(timeoutMs) || String(timeoutMs) !== rawValue || timeoutMs < 5_000 || timeoutMs > 300_000) {
+    throw new Error(`${AI_REQUEST_TIMEOUT_MS_ENV} must be an integer from 5000 to 300000.`);
+  }
+
+  return timeoutMs;
+}
+
 function decodeLegacyJwtPayload(value: string): unknown {
   const parts = value.split(".");
 
@@ -95,10 +167,10 @@ function assertLegacyAnonJwt(value: string): string {
   const payload = decodeLegacyJwtPayload(value);
 
   if (
-    payload &&
-    typeof payload === "object" &&
-    "role" in payload &&
-    payload.role === "anon"
+    payload
+    && typeof payload === "object"
+    && "role" in payload
+    && payload.role === "anon"
   ) {
     return value;
   }
@@ -150,4 +222,12 @@ export function getAppOrigin(): string {
   return validateAppEnv({
     appOrigin: process.env.APP_ORIGIN,
   }).appOrigin;
+}
+
+export function validateAiServiceEnv(input: AiServiceEnvInput): AiServiceEnv {
+  return {
+    aiServiceUrl: assertOriginUrl(AI_SERVICE_URL_ENV, readRequiredValue(AI_SERVICE_URL_ENV, input.aiServiceUrl)),
+    aiInternalApiToken: assertAiToken(readRequiredValue(AI_INTERNAL_API_TOKEN_ENV, input.aiInternalApiToken)),
+    aiRequestTimeoutMs: assertAiTimeout(input.aiRequestTimeoutMs),
+  };
 }

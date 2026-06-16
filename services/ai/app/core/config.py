@@ -1,10 +1,11 @@
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 SUPPORTED_IMAGE_MEDIA_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+INSECURE_AI_TOKEN_PLACEHOLDERS = frozenset({"replace_with_at_least_32_random_characters"})
 
 
 class Settings(BaseSettings):
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
+    ai_internal_api_token: SecretStr | None = None
     allowed_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
@@ -38,6 +40,19 @@ class Settings(BaseSettings):
     ocr_text_recognition_model: str = Field(default="PP-OCRv5_mobile_rec", min_length=1)
 
     model_config = SettingsConfigDict(env_prefix="", case_sensitive=False)
+
+    @field_validator("ai_internal_api_token")
+    @classmethod
+    def validate_ai_internal_api_token(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
+
+        token = value.get_secret_value().strip()
+        if len(token) < 32:
+            raise ValueError("AI_INTERNAL_API_TOKEN must be at least 32 characters.")
+        if token in INSECURE_AI_TOKEN_PLACEHOLDERS:
+            raise ValueError("AI_INTERNAL_API_TOKEN must be a generated secret, not an example placeholder.")
+        return SecretStr(token)
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

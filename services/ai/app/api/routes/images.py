@@ -1,5 +1,6 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from app.core.auth import require_internal_api_token
 from app.schemas.images import ImageValidationResponse
 from app.services.image_validation import ImageValidationError, validate_upload_file
 
@@ -10,6 +11,7 @@ router = APIRouter()
     "/images/validate",
     response_model=ImageValidationResponse,
     summary="Validate uploaded image metadata",
+    dependencies=[Depends(require_internal_api_token)],
 )
 async def validate_image(file: UploadFile = File(...)) -> ImageValidationResponse:
     try:
