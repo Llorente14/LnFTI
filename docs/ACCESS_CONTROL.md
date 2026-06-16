@@ -79,17 +79,17 @@ Subscribed pages:
 
 | Page | Tables and events | Filters |
 | --- | --- | --- |
-| `/me/claims` | `claims UPDATE`, `handovers INSERT` | `claimant_id = auth user`, `recipient_id = auth user` |
-| `/admin` | `reports INSERT/UPDATE`, `claims INSERT/UPDATE`, `handovers INSERT` | verifier/admin RLS |
-| `/admin/reports` | `reports INSERT/UPDATE` | verifier/admin RLS plus status relevance |
-| `/admin/reports/[id]` | `reports UPDATE` | `id = report_id` |
-| `/admin/claims` | `claims INSERT/UPDATE` | verifier/admin RLS plus status relevance |
-| `/admin/claims/[id]` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | `id = claim_id`, related `report_id`, `claim_id = claim_id` |
-| `/admin/handovers` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | verifier/admin RLS plus handover relevance |
+| `/me/claims` | `claims UPDATE`, `handovers INSERT` | own `claimant_id` and `recipient_id` |
+| `/admin` | `reports INSERT/UPDATE`, `claims INSERT/UPDATE`, `handovers INSERT` | report workflow statuses plus verifier/admin RLS |
+| `/admin/reports` | `reports INSERT/UPDATE` | `PENDING_REVIEW`, `PUBLISHED`, or `REJECTED` |
+| `/admin/reports/[id]` | `reports UPDATE` | exact `report_id` |
+| `/admin/claims` | `claims INSERT/UPDATE` | verifier/admin RLS plus claim-status relevance |
+| `/admin/claims/[id]` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | exact claim and related report IDs |
+| `/admin/handovers` | `claims UPDATE`, `reports UPDATE`, `handovers INSERT` | claims `APPROVED/COMPLETED`, reports `MATCHING/RESOLVED` |
 
-Student channels use user-specific filters. Detail channels use row-specific filters. Admin channels rely on existing verifier/admin RLS and do not weaken table policies. Public browsing does not use a global Realtime feed.
+Student channels use user-specific filters. Detail channels use row-specific filters. Queue channels use Realtime status filters where a narrower server-side predicate is possible, while verifier/admin RLS remains the authorization boundary. Public browsing does not use a global Realtime feed.
 
-Subscriptions use only `INSERT` and `UPDATE`, never `*`, and never subscribe to `audit_logs`, `profiles`, `report_images`, `export_jobs`, `storage.objects`, or `auth.users`. Realtime payloads are not logged and are not copied into domain UI state; private evidence, private report details, handover notes, NIM, contacts, cookies, and tokens stay outside client payload handling. Channels are removed with `removeChannel()` on unmount and pending debounce timers are cleared. If Realtime disconnects, pages stay usable and fall back to normal browser reload or manual refresh on detail pages.
+Subscriptions use only `INSERT` and `UPDATE`, never `*`, and never subscribe to `audit_logs`, `profiles`, `report_images`, `export_jobs`, `storage.objects`, or `auth.users`. Realtime callbacks immediately reduce authorized row payloads to workflow IDs and statuses; payloads are not logged or copied into domain UI state. Channels are removed with `removeChannel()` on unmount and pending debounce timers are cleared. If Realtime disconnects, pages stay usable and fall back to normal browser reload or manual refresh on detail pages.
 
 ### Report review workflow
 
