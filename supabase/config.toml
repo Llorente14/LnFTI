@@ -39,7 +39,7 @@ content_path = "./supabase/templates/confirmation.html"
 enabled = true
 
 [realtime]
-enabled = false
+enabled = true
 
 [studio]
 enabled = true
