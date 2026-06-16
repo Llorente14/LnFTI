@@ -18,6 +18,7 @@ __pycache__/
 venv/
 
 # Models and generated files
+dist/
 *.pt
 models/*.pt
 models/*.onnx
