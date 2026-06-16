@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from app.core.auth import require_internal_api_token
 from app.schemas.images import (
     BoundingBox,
     DetectionImageInfo,
@@ -22,6 +23,7 @@ router = APIRouter()
     "/images/detect",
     response_model=ImageDetectionResponse,
     summary="Detect objects in a validated image",
+    dependencies=[Depends(require_internal_api_token)],
 )
 async def detect_image(
     file: UploadFile = File(...),

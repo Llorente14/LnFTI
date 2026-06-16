@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from app.core.auth import require_internal_api_token
 from app.schemas.images import ImageOcrResponse, OcrImageInfo, OcrTextLine
 from app.services.image_validation import ImageValidationError, validate_upload_file
 from app.services.paddle_ocr import OcrResult, OcrServiceError, TextExtractor, get_text_extractor
@@ -12,6 +13,7 @@ router = APIRouter()
     "/images/ocr",
     response_model=ImageOcrResponse,
     summary="Extract visible text from a validated image",
+    dependencies=[Depends(require_internal_api_token)],
 )
 async def extract_image_text(
     file: UploadFile = File(...),
