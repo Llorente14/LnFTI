@@ -319,7 +319,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       assert.equal(approved.handover_count, 0);
 
       await waitForRealtimeRefresh(claimantPage, "Status klaim diperbarui.");
-      await claimantPage.reload();
       await claimantPage.getByText("Klaim disetujui. Serah-terima fisik belum selesai", { exact: false }).waitFor({ timeout: 30_000 });
     });
 
@@ -381,7 +380,6 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await verifierPage.getByText("Selesai").first().waitFor();
 
       await waitForRealtimeRefresh(claimantPage, "Status klaim diperbarui.");
-      await claimantPage.reload();
       await claimantPage.getByText("Barang sudah diserahkan kepada Anda.").waitFor({ timeout: 30_000 });
       await claimantPage.getByText(handoverLocation).waitFor();
       await claimantPage.getByText(handoverNote).waitFor();

@@ -129,7 +129,7 @@ test("channel configuration uses row and workflow status filters", () => {
 
   assert.equal(myClaims.channelName, `my-claims-status-${userId}`);
   assert.deepEqual(myClaims.subscriptions.map((item) => [item.table, item.event, item.filter]), [
-    ["claims", "UPDATE", `claimant_id=eq.${userId}`],
+    ["claims", "UPDATE", undefined],
     ["handovers", "INSERT", `recipient_id=eq.${userId}`],
   ]);
   assert.ok(claimDetail.subscriptions.some((item) => item.table === "reports" && item.filter === "id=eq.22000000-0000-4000-8000-000000000002"));

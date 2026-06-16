@@ -13,7 +13,6 @@ export function buildMyClaimsRealtimeConfig(userId: string): RealtimeChannelConf
         event: "UPDATE",
         schema: publicSchema,
         table: "claims",
-        filter: `claimant_id=eq.${userId}`,
         relevance: "claimant-claims",
       },
       {
