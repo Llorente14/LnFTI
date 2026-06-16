@@ -5,9 +5,12 @@ import type { ReactNode } from "react";
 
 import { ClaimStatusBadge } from "@/components/claims/claim-status-badge";
 import { ReportTypeBadge } from "@/components/reports/report-status-badge";
+import { getClaimHandover } from "@/lib/admin/handover";
+import { isHandoverEligible } from "@/lib/admin/handover-validation";
 import { getClaimReportImages, getVerifierClaimDetail } from "@/lib/admin/claim-review";
 import { claimIdSchema } from "@/lib/claims/validation";
 import { ClaimDecisionControls } from "./claim-decision-controls";
+import { HandoverControls } from "./handover-controls";
 
 interface AdminClaimDetailPageProps {
   params: Promise<{ id: string }>;
@@ -58,7 +61,15 @@ export default async function AdminClaimDetailPage({ params }: AdminClaimDetailP
   }
 
   const images = claim.report ? await getClaimReportImages(claim.report.id) : [];
+  const handover = await getClaimHandover(claim.id);
   const decisionDisabled = claim.claim_status !== "PENDING";
+  const handoverEligible = isHandoverEligible({
+    claimStatus: claim.claim_status,
+    reportType: claim.report?.report_type ?? null,
+    reportStatus: claim.report?.report_status ?? null,
+    custodyStatus: claim.report?.custody_status ?? null,
+    hasHandover: Boolean(handover),
+  });
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -166,7 +177,25 @@ export default async function AdminClaimDetailPage({ params }: AdminClaimDetailP
             </dl>
           </section>
 
+          {handover ? (
+            <section className="rounded-lg border bg-surface p-5">
+              <h2 className="font-heading text-lg font-bold">Status serah-terima</h2>
+              <dl className="mt-4 space-y-4 text-sm">
+                <InfoRow label="Status" value="Selesai" />
+                <InfoRow label="Tanggal" value={formatDateTime(handover.handoverAt)} />
+                <InfoRow label="Lokasi" value={handover.handoverLocation} />
+                <InfoRow label="Penerima" value={handover.recipient?.display_name ?? "Profil tidak tersedia"} />
+                <InfoRow label="Verifier" value={handover.verifier?.display_name ?? "Profil tidak tersedia"} />
+                <InfoRow label="Catatan" value={handover.notes ?? "-"} />
+                <InfoRow label="Status klaim" value={<ClaimStatusBadge status={claim.claim_status} />} />
+                <InfoRow label="Status laporan" value={claim.report?.report_status ?? "-"} />
+                <InfoRow label="Custody" value={claim.report?.custody_status ?? "-"} />
+              </dl>
+            </section>
+          ) : null}
+
           <ClaimDecisionControls claimId={claim.id} disabled={decisionDisabled} />
+          {handoverEligible ? <HandoverControls claimId={claim.id} /> : null}
         </aside>
       </div>
     </main>
