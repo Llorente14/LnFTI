@@ -6,9 +6,31 @@ export const MAX_BROWSER_DETECTIONS = 5;
 export const MAX_BROWSER_OCR_LINES = 10;
 export const MAX_BROWSER_OCR_TEXT_CHARS = 1000;
 
+type ReportCategory = (typeof REPORT_CATEGORIES)[number];
+
 const finiteNonNegative = z.number().finite().nonnegative();
 const confidence = z.number().finite().min(0).max(1);
 const reportCategorySchema = z.enum(REPORT_CATEGORIES);
+
+const DETECTION_LABEL_TO_REPORT_CATEGORY: Readonly<Record<string, ReportCategory>> = {
+  backpack: "Tas",
+  handbag: "Tas",
+  suitcase: "Tas",
+  laptop: "Elektronik",
+  mouse: "Elektronik",
+  "computer mouse": "Elektronik",
+  "wireless mouse": "Elektronik",
+  "optical mouse": "Elektronik",
+  "gaming mouse": "Elektronik",
+  keyboard: "Elektronik",
+  "cell phone": "Elektronik",
+  remote: "Elektronik",
+  bottle: "Botol & Wadah",
+  cup: "Botol & Wadah",
+  book: "Dokumen",
+  tie: "Aksesori",
+  umbrella: "Aksesori",
+};
 
 const upstreamDetectionSchema = z.object({
   label: z.string().trim().min(1).max(80),
@@ -67,16 +89,46 @@ export const aiAnalysisResultSchema = z.object({
 
 export type AiAnalysisResult = z.infer<typeof aiAnalysisResultSchema>;
 
+export function normalizeDetectionLabel(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+export function mapDetectionLabelToReportCategory(label: string): ReportCategory | null {
+  return DETECTION_LABEL_TO_REPORT_CATEGORY[normalizeDetectionLabel(label)] ?? null;
+}
+
+export function deriveSuggestedCategory(labelsByConfidence: readonly string[]): ReportCategory | null {
+  for (const label of labelsByConfidence) {
+    const category = mapDetectionLabelToReportCategory(label);
+    if (category) {
+      return category;
+    }
+  }
+
+  return null;
+}
+
 export function normalizeYoloResponse(payload: unknown): NonNullable<AiAnalysisResult["detection"]> {
   const parsed = upstreamYoloResponseSchema.parse(payload);
-  const suggestedCategory = reportCategorySchema.safeParse(parsed.suggested_category);
+  const upstreamSuggestedCategory = reportCategorySchema.safeParse(parsed.suggested_category);
+  const detections = parsed.detections.slice(0, MAX_BROWSER_DETECTIONS).map((detection) => ({
+    label: detection.label,
+    confidence: detection.confidence,
+  }));
+  const shouldUseLabelFallback = parsed.suggested_category === null
+    || parsed.suggested_category.trim() === "";
 
   return {
-    suggestedCategory: suggestedCategory.success ? suggestedCategory.data : null,
-    detections: parsed.detections.slice(0, MAX_BROWSER_DETECTIONS).map((detection) => ({
-      label: detection.label,
-      confidence: detection.confidence,
-    })),
+    suggestedCategory: upstreamSuggestedCategory.success
+      ? upstreamSuggestedCategory.data
+      : shouldUseLabelFallback
+        ? deriveSuggestedCategory(detections.map((detection) => detection.label))
+        : null,
+    detections,
     inferenceMs: parsed.inference_ms,
   };
 }
