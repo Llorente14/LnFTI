@@ -1,8 +1,18 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { updateSession } from "@/lib/supabase/proxy";
 
+const PWA_PUBLIC_PATHS = new Set([
+  "/offline",
+  "/manifest.webmanifest",
+  "/sw.js",
+]);
+
 export async function proxy(request: NextRequest) {
+  if (PWA_PUBLIC_PATHS.has(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   return updateSession(request);
 }
 
