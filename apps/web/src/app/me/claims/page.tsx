@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { CancelClaimButton } from "@/components/claims/cancel-claim-button";
 import { ClaimStatusBadge } from "@/components/claims/claim-status-badge";
+import { MyClaimsRealtime } from "@/components/realtime/my-claims-realtime";
+import { requireUser } from "@/lib/auth/server";
 import { CLAIM_STATUSES, isCancellableClaimStatus } from "@/lib/claims/validation";
 import { buildMyClaimsHref, getMyClaims, parseMyClaimsFilters } from "@/lib/claims/queries";
 
@@ -28,6 +30,7 @@ function shortClaimRef(id: string) {
 }
 
 export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) {
+  const user = await requireUser("/me/claims");
   const filters = parseMyClaimsFilters(await searchParams);
   const result = await getMyClaims(filters);
   const hasPrevious = result.page > 1;
@@ -42,6 +45,8 @@ export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) 
           Pantau klaim kepemilikan dan bukti privat yang sudah Anda kirim.
         </p>
       </div>
+
+      <MyClaimsRealtime userId={user.id} />
 
       {filters.created ? (
         <p className="mt-5 rounded-lg border border-green-700/20 bg-green-50 p-4 text-sm text-green-800">
