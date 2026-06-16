@@ -2,6 +2,7 @@ import { IconArrowRight, IconClipboardCheck, IconClock, IconFileAlert, IconPacka
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { AdminDashboardRealtime } from "@/components/realtime/admin-handovers-realtime";
 import { requireRole } from "@/lib/auth/server";
 import { getClaimDashboardSummary } from "@/lib/admin/claim-review";
 import { getHandoverDashboardSummary } from "@/lib/admin/handover";
@@ -61,6 +62,8 @@ export default async function AdminPage() {
           </Button>
         </div>
       </div>
+
+      <AdminDashboardRealtime />
 
       <section className="mt-6 grid gap-4 md:grid-cols-3">
         {stats.map(({ key, label, icon: Icon }) => (
