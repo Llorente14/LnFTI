@@ -1,9 +1,10 @@
-import { IconArrowRight, IconClipboardCheck, IconClock, IconFileAlert, IconX } from "@tabler/icons-react";
+import { IconArrowRight, IconClipboardCheck, IconClock, IconFileAlert, IconPackageExport, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/server";
 import { getClaimDashboardSummary } from "@/lib/admin/claim-review";
+import { getHandoverDashboardSummary } from "@/lib/admin/handover";
 import { getVerifierDashboardSummary } from "@/lib/admin/report-review";
 
 export const metadata = { title: "Dashboard Verifier" };
@@ -24,9 +25,10 @@ const stats = [
 
 export default async function AdminPage() {
   await requireRole(["verifier", "admin"], "/admin");
-  const [summary, claimSummary] = await Promise.all([
+  const [summary, claimSummary, handoverSummary] = await Promise.all([
     getVerifierDashboardSummary(),
     getClaimDashboardSummary(),
+    getHandoverDashboardSummary(),
   ]);
 
   return (
@@ -48,6 +50,12 @@ export default async function AdminPage() {
           <Button asChild variant="secondary">
             <Link href="/admin/claims">
               Queue klaim
+              <IconArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/admin/handovers">
+              Serah-terima
               <IconArrowRight size={17} aria-hidden="true" />
             </Link>
           </Button>
@@ -87,6 +95,23 @@ export default async function AdminPage() {
             <IconClipboardCheck size={20} className="text-primary" aria-hidden="true" />
           </div>
           <p className="mt-3 font-heading text-3xl font-bold">{claimSummary.approvedClaimCount}</p>
+        </article>
+      </section>
+
+      <section className="mt-6 grid gap-4 md:grid-cols-2">
+        <article className="rounded-lg border bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Menunggu serah-terima</p>
+            <IconPackageExport size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <p className="mt-3 font-heading text-3xl font-bold">{handoverSummary.pendingHandoverCount}</p>
+        </article>
+        <article className="rounded-lg border bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Serah-terima bulan ini</p>
+            <IconClipboardCheck size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <p className="mt-3 font-heading text-3xl font-bold">{handoverSummary.completedThisMonthCount}</p>
         </article>
       </section>
 
