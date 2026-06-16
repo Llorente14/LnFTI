@@ -68,7 +68,7 @@ export function HandoverControls({ claimId }: { claimId: string }) {
         </p>
       </div>
       <div className="space-y-2">
-        <label htmlFor="handover-notes" className="font-heading text-sm font-semibold">Catatan operasional</label>
+        <label htmlFor="handover-notes" className="font-heading text-sm font-semibold">Catatan serah-terima (opsional)</label>
         <textarea
           id="handover-notes"
           name="notes"
@@ -77,6 +77,9 @@ export function HandoverControls({ claimId }: { claimId: string }) {
           disabled={pending}
           className="w-full rounded-md border bg-surface px-3 py-2 text-sm"
         />
+        <p className="text-xs text-muted-foreground">
+          Catatan ini akan terlihat oleh mahasiswa penerima pada riwayat klaim.
+        </p>
       </div>
       {state.message ? (
         <p
