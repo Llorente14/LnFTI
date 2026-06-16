@@ -117,6 +117,7 @@ export function CustodyStatusForm({
   const [selectedStatus, setSelectedStatus] = useState<CustodyStatus>(currentStatus);
   const [state, formAction, pending] = useActionState(updateCustodyStatusAction, initialAdminActionState);
   const unchanged = selectedStatus === currentStatus;
+  const lockedByHandover = currentStatus === "HANDED_OVER";
 
   useEffect(() => {
     if (state.status === "success") {
@@ -141,7 +142,9 @@ export function CustodyStatusForm({
     >
       <div>
         <h2 className="font-heading text-lg font-bold">Status penitipan</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Perubahan custody tidak membuat handover atau mengubah klaim.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Status HANDED_OVER hanya ditetapkan melalui penyelesaian serah-terima dari klaim yang telah disetujui.
+        </p>
       </div>
       <input type="hidden" name="reportId" value={reportId} />
       <input type="hidden" name="currentCustodyStatus" value={currentStatus} />
@@ -150,9 +153,9 @@ export function CustodyStatusForm({
         <select
           id="newCustodyStatus"
           name="newCustodyStatus"
-          value={selectedStatus}
+          value={lockedByHandover ? "UNKNOWN" : selectedStatus}
           onChange={(event) => setSelectedStatus(event.target.value as CustodyStatus)}
-          disabled={pending}
+          disabled={pending || lockedByHandover}
           className="h-11 w-full rounded-md border bg-surface px-3 text-sm"
         >
           {CUSTODY_STATUSES.map((status) => (
@@ -169,12 +172,12 @@ export function CustodyStatusForm({
           minLength={5}
           maxLength={500}
           rows={3}
-          disabled={pending}
+          disabled={pending || lockedByHandover}
           className="w-full rounded-md border bg-surface px-3 py-2 text-sm"
         />
       </div>
       <StatusMessage status={state.status} message={state.message} />
-      <Button type="submit" variant="gold" disabled={pending || unchanged}>
+      <Button type="submit" variant="gold" disabled={pending || unchanged || lockedByHandover}>
         <IconRotateClockwise size={17} aria-hidden="true" />
         Perbarui custody
       </Button>

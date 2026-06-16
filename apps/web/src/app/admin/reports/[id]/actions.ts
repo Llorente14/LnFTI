@@ -26,6 +26,10 @@ function safeRpcMessage(errorMessage: string | undefined) {
     return "Status penitipan tidak berubah.";
   }
 
+  if (message.includes("handed over custody")) {
+    return "Status HANDED_OVER hanya ditetapkan melalui penyelesaian serah-terima dari klaim yang telah disetujui.";
+  }
+
   if (message.includes("draft")) {
     return "Laporan draft belum dapat diubah status penitipannya.";
   }

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const REVIEW_DECISIONS = ["APPROVE", "REJECT"] as const;
-export const CUSTODY_STATUSES = ["WITH_FINDER", "AT_DPM", "HANDED_OVER", "UNKNOWN"] as const;
+export const ALL_CUSTODY_STATUSES = ["WITH_FINDER", "AT_DPM", "HANDED_OVER", "UNKNOWN"] as const;
+export const CUSTODY_STATUSES = ["WITH_FINDER", "AT_DPM", "UNKNOWN"] as const;
 
 const trimmedReason = z
   .string()
@@ -17,7 +18,7 @@ export const reportReviewSchema = z.object({
 
 export const custodyStatusSchema = z.object({
   reportId: z.string().uuid("ID laporan tidak valid."),
-  currentCustodyStatus: z.enum(CUSTODY_STATUSES, { message: "Status penitipan saat ini tidak valid." }),
+  currentCustodyStatus: z.enum(ALL_CUSTODY_STATUSES, { message: "Status penitipan saat ini tidak valid." }),
   newCustodyStatus: z.enum(CUSTODY_STATUSES, { message: "Status penitipan baru tidak valid." }),
   reason: trimmedReason,
 }).refine(
@@ -26,4 +27,4 @@ export const custodyStatusSchema = z.object({
 );
 
 export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
-export type CustodyStatus = (typeof CUSTODY_STATUSES)[number];
+export type CustodyStatus = (typeof ALL_CUSTODY_STATUSES)[number];

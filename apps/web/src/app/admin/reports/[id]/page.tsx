@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ReportTypeBadge } from "@/components/reports/report-status-badge";
-import { CUSTODY_STATUSES, type CustodyStatus } from "@/lib/admin/report-review-validation";
+import { ALL_CUSTODY_STATUSES, type CustodyStatus } from "@/lib/admin/report-review-validation";
 import {
   getVerifierReportDetail,
   getVerifierReportImages,
@@ -94,7 +94,7 @@ export default async function AdminReportDetailPage({ params }: AdminReportDetai
   }
 
   const reviewDisabled = report.report_status !== "PENDING_REVIEW";
-  const custodyStatus = CUSTODY_STATUSES.includes(report.custody_status as CustodyStatus)
+  const custodyStatus = ALL_CUSTODY_STATUSES.includes(report.custody_status as CustodyStatus)
     ? (report.custody_status as CustodyStatus)
     : "UNKNOWN";
 
