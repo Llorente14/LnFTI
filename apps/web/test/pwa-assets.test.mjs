@@ -99,3 +99,13 @@ test("root layout and Next config wire PWA registration and headers", () => {
   assert.match(nextConfig, /Service-Worker-Allowed/);
   assert.match(nextConfig, /must-revalidate/);
 });
+
+test("public PWA bootstrap routes bypass session refresh", () => {
+  const proxy = readFileSync("src/proxy.ts", "utf8");
+
+  assert.match(proxy, /"\/offline"/);
+  assert.match(proxy, /"\/manifest\.webmanifest"/);
+  assert.match(proxy, /"\/sw\.js"/);
+  assert.match(proxy, /PWA_PUBLIC_PATHS\.has\(request\.nextUrl\.pathname\)/);
+  assert.match(proxy, /return NextResponse\.next\(\)/);
+});
