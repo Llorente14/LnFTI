@@ -71,7 +71,7 @@ test("eligibility helper rejects unverified claimant", () => {
     reportType: "FOUND",
     reportStatus: "MATCHING",
     custodyStatus: "AT_DPM",
-    claimantVerificationStatus: "PENDING_EMAIL",
+    claimantVerificationStatus: "UNVERIFIED",
     hasHandover: false,
   }), false);
 });

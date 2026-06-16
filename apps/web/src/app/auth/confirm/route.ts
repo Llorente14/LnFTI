@@ -1,4 +1,5 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
@@ -6,8 +7,41 @@ import {
   buildConfirmationRedirectUrl,
   isAllowedConfirmationType,
 } from "@/lib/auth/confirmation";
-import { getAppOrigin } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { getAppOrigin, getPublicEnv } from "@/lib/env";
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
+
+function createConfirmationClient(request: NextRequest) {
+  const env = getPublicEnv();
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = createServerClient(env.supabaseUrl, env.supabasePublishableKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(nextCookies: CookieToSet[]) {
+        cookiesToSet.push(...nextCookies);
+      },
+    },
+  });
+
+  return {
+    supabase,
+    redirect(url: string) {
+      const response = NextResponse.redirect(url);
+
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
+
+      return response;
+    },
+  };
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -20,15 +54,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(buildConfirmationFailureUrl(appOrigin));
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const auth = createConfirmationClient(request);
+  const { error } = await auth.supabase.auth.verifyOtp({
     token_hash: tokenHash,
     type: type as EmailOtpType,
   });
 
   if (error) {
-    return NextResponse.redirect(buildConfirmationFailureUrl(appOrigin));
+    return auth.redirect(buildConfirmationFailureUrl(appOrigin));
   }
 
-  return NextResponse.redirect(buildConfirmationRedirectUrl(appOrigin, next));
+  return auth.redirect(buildConfirmationRedirectUrl(appOrigin, next));
 }

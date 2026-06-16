@@ -16,6 +16,12 @@ export type CurrentProfile = {
   verification_status: string;
 };
 
+export type CurrentProfileResult =
+  | { status: "ok"; profile: CurrentProfile }
+  | { status: "not_found" }
+  | { status: "invalid_role" }
+  | { status: "query_error" };
+
 export async function getCurrentUser() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
@@ -42,7 +48,7 @@ export async function requireUser(nextPath: string = DEFAULT_AUTH_REDIRECT) {
   return user;
 }
 
-async function readOwnProfile(userId: string): Promise<CurrentProfile | null> {
+async function readOwnProfile(userId: string): Promise<CurrentProfileResult> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -50,11 +56,19 @@ async function readOwnProfile(userId: string): Promise<CurrentProfile | null> {
     .eq("id", userId)
     .maybeSingle();
 
-  if (error || !data || !isAllowedRole(data.role, ["student", "verifier", "admin"])) {
-    return null;
+  if (error) {
+    return { status: "query_error" };
   }
 
-  return data as CurrentProfile;
+  if (!data) {
+    return { status: "not_found" };
+  }
+
+  if (!isAllowedRole(data.role, ["student", "verifier", "admin"])) {
+    return { status: "invalid_role" };
+  }
+
+  return { status: "ok", profile: data as CurrentProfile };
 }
 
 export async function getCurrentProfile(): Promise<CurrentProfile | null> {
@@ -62,6 +76,18 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
 
   if (!user) {
     return null;
+  }
+
+  const result = await readOwnProfile(user.id);
+
+  return result.status === "ok" ? result.profile : null;
+}
+
+export async function getCurrentProfileResult(): Promise<CurrentProfileResult> {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { status: "not_found" };
   }
 
   return readOwnProfile(user.id);
@@ -72,11 +98,11 @@ export async function requireRole(
   nextPath: string = DEFAULT_AUTH_REDIRECT,
 ) {
   const user = await requireUser(nextPath);
-  const profile = await readOwnProfile(user.id);
+  const result = await readOwnProfile(user.id);
 
-  if (!profile || !allowedRoles.includes(profile.role)) {
+  if (result.status !== "ok" || !allowedRoles.includes(result.profile.role)) {
     notFound();
   }
 
-  return { user, profile };
+  return { user, profile: result.profile };
 }

@@ -19,6 +19,10 @@ function authInfoMessage(message: string | undefined): string | undefined {
     return "Link konfirmasi tidak valid atau sudah kedaluwarsa.";
   }
 
+  if (message === "profile_unavailable") {
+    return "Email sudah dikonfirmasi, tetapi profil belum dapat dibuka. Hubungi admin LnFTI.";
+  }
+
   return undefined;
 }
 
