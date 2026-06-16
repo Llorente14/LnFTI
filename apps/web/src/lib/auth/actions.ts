@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 
 import {
+  buildConfirmationCallbackUrl,
+} from "@/lib/auth/confirmation";
+import {
   sanitizeNextPath,
   validateInstitutionalEmail,
   validateInstitutionalIdentity,
@@ -13,6 +16,8 @@ import { createClient } from "@/lib/supabase/server";
 const REGISTER_ERROR =
   "Registrasi tidak dapat diproses. Email atau NIM mungkin sudah digunakan.";
 const LOGIN_ERROR = "Email atau password tidak valid.";
+const LOGIN_EMAIL_NOT_CONFIRMED_ERROR =
+  "Email belum dikonfirmasi. Cek inbox email institusional sebelum masuk.";
 
 export type AuthActionState = {
   status: "idle" | "error";
@@ -23,6 +28,15 @@ function formString(formData: FormData, name: string): string {
   const value = formData.get(name);
 
   return typeof value === "string" ? value : "";
+}
+
+function isEmailNotConfirmedError(error: { code?: string; message?: string } | null): boolean {
+  const code = error?.code?.toLowerCase();
+  const message = error?.message?.toLowerCase() ?? "";
+
+  return code === "email_not_confirmed"
+    || message.includes("email not confirmed")
+    || message.includes("email_not_confirmed");
 }
 
 export async function registerAction(
@@ -65,7 +79,7 @@ export async function registerAction(
         full_name: fullName,
         nim,
       },
-      emailRedirectTo: `${appOrigin}/auth/confirm?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: buildConfirmationCallbackUrl(appOrigin, next),
     },
   });
 
@@ -80,7 +94,7 @@ export async function registerAction(
     redirect(next);
   }
 
-  redirect("/auth/check-email");
+  redirect(`/auth/check-email?next=${encodeURIComponent(next)}`);
 }
 
 export async function loginAction(
@@ -116,11 +130,35 @@ export async function loginAction(
   if (error) {
     return {
       status: "error",
-      message: LOGIN_ERROR,
+      message: isEmailNotConfirmedError(error) ? LOGIN_EMAIL_NOT_CONFIRMED_ERROR : LOGIN_ERROR,
     };
   }
 
   redirect(next);
+}
+
+export async function resendConfirmationAction(formData: FormData) {
+  const next = sanitizeNextPath(formString(formData, "next"));
+  let email: string;
+
+  try {
+    email = validateInstitutionalEmail(formString(formData, "email"));
+  } catch {
+    redirect(`/auth/check-email?next=${encodeURIComponent(next)}&message=resent`);
+  }
+
+  const supabase = await createClient();
+  const appOrigin = getAppOrigin();
+
+  await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: buildConfirmationCallbackUrl(appOrigin, next),
+    },
+  });
+
+  redirect(`/auth/check-email?next=${encodeURIComponent(next)}&message=resent`);
 }
 
 export async function logoutAction() {

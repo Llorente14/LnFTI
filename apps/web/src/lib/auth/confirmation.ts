@@ -8,6 +8,14 @@ export function isAllowedConfirmationType(value: string | null): value is Allowe
   return value === "signup" || value === "email";
 }
 
+export function buildConfirmationCallbackUrl(appOrigin: string, nextPath: string | null): string {
+  const url = new URL("/auth/confirm", appOrigin);
+
+  url.searchParams.set("next", sanitizeNextPath(nextPath));
+
+  return url.toString();
+}
+
 export function buildConfirmationRedirectUrl(appOrigin: string, nextPath: string | null): string {
   return new URL(sanitizeNextPath(nextPath), appOrigin).toString();
 }

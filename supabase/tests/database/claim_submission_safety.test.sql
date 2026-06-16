@@ -11,6 +11,16 @@ values
 update public.profiles set role = 'verifier'::public.application_role
 where id = '53519000-0000-4000-8000-000000000014';
 
+update public.profiles
+set
+  verification_status = 'VERIFIED'::public.profile_verification_status,
+  verified_at = coalesce(verified_at, now())
+where id in (
+  '53519000-0000-4000-8000-000000000011',
+  '53519000-0000-4000-8000-000000000012',
+  '53519000-0000-4000-8000-000000000013'
+);
+
 insert into public.reports (
   id, reporter_id, report_type, item_name, category, public_description,
   private_characteristics, building, event_at, report_status, custody_status, published_at
