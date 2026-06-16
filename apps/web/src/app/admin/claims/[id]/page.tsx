@@ -68,6 +68,7 @@ export default async function AdminClaimDetailPage({ params }: AdminClaimDetailP
     reportType: claim.report?.report_type ?? null,
     reportStatus: claim.report?.report_status ?? null,
     custodyStatus: claim.report?.custody_status ?? null,
+    claimantVerificationStatus: claim.claimant?.verification_status ?? null,
     hasHandover: Boolean(handover),
   });
 
