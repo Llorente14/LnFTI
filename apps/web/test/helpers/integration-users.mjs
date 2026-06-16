@@ -18,7 +18,7 @@ export function createInstitutionalIdentity(label, prefix = "535") {
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
   return {
-    fullName: `MVP ${label} ${sequence}`,
+    fullName: `${label} MVP ${sequence}`,
     nim,
     email: `${slug}.${nim}@stu.untar.ac.id`,
     passphrase: `LnftiMvp${sequence}!`,
