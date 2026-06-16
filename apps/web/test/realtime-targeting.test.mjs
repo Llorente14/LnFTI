@@ -44,12 +44,20 @@ test("claim UPDATE is relevant to claimant refresh", () => {
   }, "claimant-claims"), true);
 });
 
-test("report UPDATE is relevant to admin report refresh", () => {
+test("report review transition is relevant to admin report refresh", () => {
+  assert.equal(relevance.isRealtimePayloadRelevant({
+    eventType: "UPDATE",
+    table: "reports",
+    new: { report_status: "PUBLISHED" },
+  }, "admin-report-queue"), true);
+});
+
+test("resolved report is ignored by the report review queue", () => {
   assert.equal(relevance.isRealtimePayloadRelevant({
     eventType: "UPDATE",
     table: "reports",
     new: { report_status: "RESOLVED" },
-  }, "admin-report-queue"), true);
+  }, "admin-report-queue"), false);
 });
 
 test("handover INSERT is relevant to claimant and admin handover refresh", () => {
@@ -109,13 +117,15 @@ test("debounce coalesces repeated refresh requests", () => {
   assert.equal(debouncer.hasPending(), false);
 });
 
-test("channel configuration uses expected table, event, and filter", () => {
+test("channel configuration uses row and workflow status filters", () => {
   const userId = "53522000-0000-4000-8000-000000000001";
   const myClaims = constants.buildMyClaimsRealtimeConfig(userId);
   const claimDetail = constants.buildAdminClaimDetailRealtimeConfig(
     "22000000-0000-4000-8000-000000000001",
     "22000000-0000-4000-8000-000000000002",
   );
+  const reportQueue = constants.buildAdminReportQueueRealtimeConfig();
+  const handoverQueue = constants.buildAdminHandoverQueueRealtimeConfig();
 
   assert.equal(myClaims.channelName, `my-claims-status-${userId}`);
   assert.deepEqual(myClaims.subscriptions.map((item) => [item.table, item.event, item.filter]), [
@@ -123,6 +133,9 @@ test("channel configuration uses expected table, event, and filter", () => {
     ["handovers", "INSERT", `recipient_id=eq.${userId}`],
   ]);
   assert.ok(claimDetail.subscriptions.some((item) => item.table === "reports" && item.filter === "id=eq.22000000-0000-4000-8000-000000000002"));
+  assert.ok(reportQueue.subscriptions.every((item) => item.filter === "report_status=in.(PENDING_REVIEW,PUBLISHED,REJECTED)"));
+  assert.ok(handoverQueue.subscriptions.some((item) => item.table === "claims" && item.filter === "claim_status=in.(APPROVED,COMPLETED)"));
+  assert.ok(handoverQueue.subscriptions.some((item) => item.table === "reports" && item.filter === "report_status=in.(MATCHING,RESOLVED)"));
   assert.equal(claimDetail.subscriptions.some((item) => item.event === "*"), false);
 });
 
