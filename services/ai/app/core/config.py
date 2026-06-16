@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     image_allowed_media_types: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["image/jpeg", "image/png", "image/webp"],
     )
+    yolo_model_path: str = Field(default="yolo26n.pt", min_length=1)
+    yolo_device: str = Field(default="cpu", min_length=1)
+    yolo_confidence_threshold: float = Field(default=0.25, gt=0, le=1)
+    yolo_iou_threshold: float = Field(default=0.70, gt=0, le=1)
+    yolo_image_size: int = Field(default=640, ge=320, le=1280)
+    yolo_max_detections: int = Field(default=20, ge=1, le=100)
 
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -58,6 +64,21 @@ class Settings(BaseSettings):
             )
 
         return normalized
+
+    @field_validator("yolo_model_path", "yolo_device")
+    @classmethod
+    def validate_non_empty_yolo_string(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("YOLO configuration value must not be empty.")
+        return trimmed
+
+    @field_validator("yolo_image_size")
+    @classmethod
+    def validate_yolo_image_size_stride(cls, value: int) -> int:
+        if value % 32 != 0:
+            raise ValueError("YOLO_IMAGE_SIZE must be divisible by 32.")
+        return value
 
 
 @lru_cache
