@@ -1,6 +1,6 @@
 import type { RealtimePayload, RealtimeRelevance, RealtimeSubscriptionConfig } from "@/lib/realtime/types";
 
-const ADMIN_REPORT_STATUSES = new Set(["PENDING_REVIEW", "PUBLISHED", "REJECTED", "MATCHING", "RESOLVED"]);
+const ADMIN_REPORT_STATUSES = new Set(["PENDING_REVIEW", "PUBLISHED", "REJECTED"]);
 const ADMIN_CLAIM_STATUSES = new Set(["PENDING", "APPROVED", "REJECTED", "EXPIRED", "CANCELLED", "COMPLETED"]);
 const HANDOVER_CLAIM_STATUSES = new Set(["APPROVED", "COMPLETED"]);
 const HANDOVER_REPORT_STATUSES = new Set(["MATCHING", "RESOLVED"]);
@@ -45,8 +45,7 @@ export function isRealtimePayloadRelevant(payload: RealtimePayload, relevance: R
     }
 
     if (payload.table === "reports") {
-      return HANDOVER_REPORT_STATUSES.has(readString(next, "report_status"))
-        || readString(next, "custody_status") === "HANDED_OVER";
+      return HANDOVER_REPORT_STATUSES.has(readString(next, "report_status"));
     }
 
     return payload.table === "handovers" && payload.eventType === "INSERT";
