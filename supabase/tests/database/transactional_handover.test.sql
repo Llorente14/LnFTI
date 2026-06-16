@@ -11,9 +11,9 @@ select has_function(
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
-  ('53526000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'handoverowner.535260001@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoverowner User","nim":"535260001"}'::jsonb, now(), now()),
-  ('53526000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'handoverclaimant.535260002@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoverclaimant User","nim":"535260002"}'::jsonb, now(), now()),
-  ('53526000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'handoververifier.535260003@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoververifier User","nim":"535260003"}'::jsonb, now(), now());
+  ('53526000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'handoverowner.535240601@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoverowner User","nim":"535240601"}'::jsonb, now(), now()),
+  ('53526000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'handoverclaimant.535240602@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoverclaimant User","nim":"535240602"}'::jsonb, now(), now()),
+  ('53526000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'handoververifier.535240603@stu.untar.ac.id', '', now(), '{}'::jsonb, '{"full_name":"Handoververifier User","nim":"535240603"}'::jsonb, now(), now());
 
 update public.profiles
 set role = 'verifier'::public.application_role
