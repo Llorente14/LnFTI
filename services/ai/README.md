@@ -135,7 +135,7 @@ curl -X POST \
   http://127.0.0.1:8000/api/v1/images/validate
 ```
 
-The validation service lives in `app/services/image_validation.py` so `LNFTI-25` and `LNFTI-26` can reuse the same upload rules before YOLO or OCR processing. This ticket does not add YOLO, OCR, Supabase access, database access, production authorization, or API secrets. Production exposure and web-to-AI authorization remain deployment/integration work.
+The validation service lives in `app/services/image_validation.py` so detection and OCR routes can reuse the same upload rules. The validation endpoint itself does not run YOLO or OCR, access Supabase or the database, or introduce API secrets. Production exposure and web-to-AI authorization remain deployment/integration work.
 
 ## YOLO Detection
 
