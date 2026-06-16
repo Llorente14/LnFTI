@@ -89,6 +89,14 @@ test("service worker excludes private and dynamic request classes", () => {
   assert.match(sw, /request\.headers\.has\("next-action"\)/);
 });
 
+test("service worker cache lookup stays scoped to selected cache", () => {
+  const sw = readFileSync(swPath, "utf8");
+
+  assert.match(sw, /const cache = await caches\.open\(cacheName\)/);
+  assert.match(sw, /await cache\.match\(request\)/);
+  assert.doesNotMatch(sw, /caches\.match\(request\)/);
+});
+
 test("root layout and Next config wire PWA registration and headers", () => {
   const layout = readFileSync("src/app/layout.tsx", "utf8");
   const nextConfig = readFileSync("next.config.ts", "utf8");
