@@ -20,6 +20,8 @@ The service worker registers `/sw.js` once from the root layout, only in product
 - `Cache-Control: public, max-age=0, must-revalidate`
 - `Service-Worker-Allowed: /`
 
+`/sw.js`, `/manifest.webmanifest`, and `/offline` bypass the Supabase session-refresh proxy. These public bootstrap resources therefore remain independent of authentication availability and do not perform unnecessary session calls during service-worker installation or offline precaching.
+
 ## Cache Strategy
 
 Cache names are versioned in `sw.js`:
