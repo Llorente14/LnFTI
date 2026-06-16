@@ -1,0 +1,47 @@
+{
+  "name": "LnFTI — Untar Lost & Found",
+  "short_name": "LnFTI",
+  "description": "Platform laporan barang hilang dan temuan untuk lingkungan Universitas Tarumanagara.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F7",
+  "theme_color": "#6B1220",
+  "lang": "id",
+  "categories": ["education", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/lnfti-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/lnfti-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/lnfti-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cari laporan",
+      "short_name": "Cari",
+      "url": "/reports",
+      "description": "Cari laporan barang hilang dan temuan."
+    },
+    {
+      "name": "Buat laporan",
+      "short_name": "Lapor",
+      "url": "/report/new",
+      "description": "Buat laporan barang hilang atau temuan."
+    }
+  ]
+}
