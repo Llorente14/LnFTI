@@ -171,6 +171,12 @@ test("OCR append helper respects private field limit", () => {
   assert.equal(result.value.length, 990);
 });
 
+test("detected labels are formatted for users", () => {
+  assert.equal(suggestions.formatDetectedLabel("mouse"), "Mouse");
+  assert.equal(suggestions.formatDetectedLabel("wireless_mouse"), "Wireless Mouse");
+  assert.equal(suggestions.formatDetectedLabel("USB-C  CABLE"), "Usb C Cable");
+});
+
 test("browser client uses same-origin proxy and generic contract failure", () => {
   const source = readFileSync("src/lib/ai/analyze-image.ts", "utf8");
   assert.match(source, /\/api\/ai\/analyze-image/);
@@ -186,4 +192,26 @@ test("form cancels analysis on submit and partial UI stays manual", () => {
   assert.match(form, /isAnalysisBusy=\{Boolean\(activeAnalysisId\) \|\| isSubmitting\}/);
   assert.match(picker, /Sebagian analisis tidak tersedia/);
   assert.match(picker, /Tambahkan ke ciri privat/);
+});
+
+test("report photo help auto-fills without overwriting manual edits", () => {
+  const form = readFileSync("src/app/report/new/report-form.tsx", "utf8");
+
+  assert.match(form, /applyAnalysisToForm/);
+  assert.match(form, /topDetectedLabel\(result\)/);
+  assert.match(form, /formatDetectedLabel\(itemName\)/);
+  assert.match(form, /manualAutofillOverridesRef\.current\.itemName/);
+  assert.match(form, /manualAutofillOverridesRef\.current\.category/);
+});
+
+test("photo result UI hides model scores and processing time", () => {
+  const form = readFileSync("src/app/report/new/report-form.tsx", "utf8");
+  const picker = readFileSync("src/components/reports/image-picker.tsx", "utf8");
+
+  assert.doesNotMatch(picker, /formatPercent/);
+  assert.doesNotMatch(picker, /confidence\}/);
+  assert.doesNotMatch(picker, /inferenceMs\.toFixed/);
+  assert.doesNotMatch(picker, /Gunakan kategori/);
+  assert.doesNotMatch(form, /Analisis AI gagal/);
+  assert.doesNotMatch(form, /Kategori diperbarui dari saran AI/);
 });

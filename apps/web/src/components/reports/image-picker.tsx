@@ -4,6 +4,7 @@ import { IconPhoto, IconSparkles, IconTrash } from "@tabler/icons-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { formatDetectedLabel, topDetectedLabel } from "@/lib/ai/report-suggestions";
 import type { AiAnalysisResult } from "@/lib/ai/schemas";
 import {
   REPORT_IMAGE_ALLOWED_MIME_TYPES,
@@ -33,16 +34,11 @@ type ImagePickerProps = {
   isAnalysisBusy?: boolean;
   currentCategory?: string;
   onAnalyze?: (image: SelectedReportImage) => void;
-  onApplyCategory?: (category: string) => void;
   onAppendOcr?: (fullText: string) => void;
 };
 
 function formatFileSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
-}
-
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
 }
 
 export function ImagePicker({
@@ -53,7 +49,6 @@ export function ImagePicker({
   isAnalysisBusy = false,
   currentCategory = "",
   onAnalyze,
-  onApplyCategory,
   onAppendOcr,
 }: ImagePickerProps) {
   const [error, setError] = useState("");
@@ -134,11 +129,13 @@ export function ImagePicker({
 
     const result = state.status === "success" ? state.result : null;
     const suggestedCategory = result?.detection?.suggestedCategory ?? null;
+    const detectedLabel = result ? topDetectedLabel(result) : null;
+    const formattedLabel = detectedLabel ? formatDetectedLabel(detectedLabel) : null;
 
     return (
       <div className="space-y-2 rounded-md border bg-muted/30 p-3" aria-live="polite">
         <p className="text-xs text-muted-foreground">
-          Opsional. Hasil AI hanya berupa saran dan tidak dikirim otomatis.
+          Opsional. Foto dapat membantu mengisi nama barang dan kategori.
         </p>
         <button
           type="button"
@@ -147,7 +144,7 @@ export function ImagePicker({
           className="inline-flex min-h-11 items-center gap-2 rounded-md border bg-surface px-3 text-sm font-semibold text-primary hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
         >
           <IconSparkles className="h-4 w-4" aria-hidden="true" />
-          {state.status === "error" ? "Coba lagi" : state.status === "loading" ? "Menganalisis..." : "Analisis AI"}
+          {state.status === "error" ? "Coba lagi" : state.status === "loading" ? "Memeriksa..." : "Bantu isi dari foto"}
         </button>
         {state.status === "error" ? <p className="text-sm font-medium text-primary">{state.message}</p> : null}
         {result?.status === "partial" ? (
@@ -160,31 +157,18 @@ export function ImagePicker({
             {result.detection ? (
               <div className="space-y-2">
                 <div>
-                  <p className="font-heading text-xs font-semibold">Kategori saran</p>
-                  <p>{suggestedCategory ?? "Tidak ada"}</p>
+                  <p className="font-heading text-xs font-semibold">Hasil foto</p>
+                  <dl className="mt-1 grid gap-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Objek</dt>
+                      <dd className="font-medium">{formattedLabel ?? "Belum dikenali"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Kategori</dt>
+                      <dd className="font-medium">{suggestedCategory ?? currentCategory}</dd>
+                    </div>
+                  </dl>
                 </div>
-                {result.detection.detections.length > 0 ? (
-                  <div>
-                    <p className="font-heading text-xs font-semibold">Objek</p>
-                    <ul className="mt-1 space-y-1">
-                      {result.detection.detections.slice(0, 3).map((detection, detectionIndex) => (
-                        <li key={`${image.id}_detection_${detectionIndex}`}>
-                          {detection.label} - {formatPercent(detection.confidence)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                <p className="text-xs text-muted-foreground">{result.detection.inferenceMs.toFixed(2)} ms</p>
-                {suggestedCategory && suggestedCategory !== currentCategory ? (
-                  <button
-                    type="button"
-                    onClick={() => onApplyCategory?.(suggestedCategory)}
-                    className="min-h-11 rounded-md border bg-surface px-3 text-sm font-semibold text-primary hover:bg-muted"
-                  >
-                    Gunakan kategori {suggestedCategory}
-                  </button>
-                ) : null}
               </div>
             ) : null}
             {result.ocr ? (
@@ -192,9 +176,7 @@ export function ImagePicker({
                 <p className="font-heading text-xs font-semibold">Teks terlihat</p>
                 <ul className="space-y-1">
                   {result.ocr.lines.slice(0, 5).map((line, lineIndex) => (
-                    <li key={`${image.id}_ocr_${lineIndex}`}>
-                      {line.text} - {formatPercent(line.confidence)}
-                    </li>
+                    <li key={`${image.id}_ocr_${lineIndex}`}>{line.text}</li>
                   ))}
                 </ul>
                 <p className="text-xs text-muted-foreground">

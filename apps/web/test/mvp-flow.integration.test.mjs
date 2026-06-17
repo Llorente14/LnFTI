@@ -195,11 +195,9 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
     });
 
     let report;
-    await t.test("finder submits FOUND report with explicit AI suggestions", async () => {
+    await t.test("finder submits FOUND report with photo-assisted defaults", async () => {
       await finderPage.goto(`${env.appUrl}/report/new?type=FOUND`);
       await finderPage.getByText("Barang temuan").click();
-      await finderPage.getByLabel("Nama barang").fill(itemName);
-      await finderPage.getByLabel("Kategori").selectOption("Lainnya");
       await finderPage.getByLabel("Deskripsi publik").fill(publicDescription);
       await finderPage.getByLabel("Ciri privat kepemilikan").fill(initialPrivate);
       await finderPage.getByLabel("Kampus").fill("Kampus 1");
@@ -207,21 +205,24 @@ maybeTest("complete MVP flow verifies report, AI, claim, handover, public privac
       await finderPage.getByLabel("Detail lokasi").fill(`Meja baca lantai 3 ${runId}`);
       await finderPage.getByLabel("Waktu kejadian").fill(datetimeLocalOneHourAgo());
       await finderPage.locator('input[type="file"]').setInputFiles(imagePath);
-      await expect(finderPage.getByText("Kategori saran")).toHaveCount(0);
+      await expect(finderPage.getByText("Hasil foto")).toHaveCount(0);
+      await expect(finderPage.getByLabel("Nama barang")).toHaveValue("");
       await expect(finderPage.getByLabel("Kategori")).toHaveValue("Lainnya");
 
-      await finderPage.getByRole("button", { name: "Analisis AI" }).click();
-      await finderPage.getByText("Kategori saran").waitFor();
-      const analysisPanel = finderPage.locator('[aria-live="polite"]').filter({ hasText: "Kategori saran" });
+      await finderPage.getByRole("button", { name: "Bantu isi dari foto" }).click();
+      await finderPage.getByText("Hasil foto").waitFor();
+      const analysisPanel = finderPage.locator('[aria-live="polite"]').filter({ hasText: "Hasil foto" });
       await analysisPanel.getByText("Elektronik", { exact: true }).waitFor();
-      await analysisPanel.getByText("laptop - 93%").waitFor();
-      await analysisPanel.getByText("LOGITECH - 96%").waitFor();
-      await analysisPanel.getByText("M331 - 92%").waitFor();
-      await expect(finderPage.getByLabel("Kategori")).toHaveValue("Lainnya");
+      await analysisPanel.getByText("Laptop").waitFor();
+      await analysisPanel.getByText("LOGITECH").waitFor();
+      await analysisPanel.getByText("M331").waitFor();
+      await expect(analysisPanel).not.toContainText("%");
+      await expect(analysisPanel).not.toContainText("ms");
+      await expect(finderPage.getByLabel("Nama barang")).toHaveValue("Laptop");
+      await expect(finderPage.getByLabel("Kategori")).toHaveValue("Elektronik");
       await expect(finderPage.getByLabel("Ciri privat kepemilikan")).not.toHaveValue(/LOGITECH/);
 
-      await finderPage.getByRole("button", { name: "Gunakan kategori Elektronik" }).click();
-      await expect(finderPage.getByLabel("Kategori")).toHaveValue("Elektronik");
+      await finderPage.getByLabel("Nama barang").fill(itemName);
       await finderPage.getByRole("button", { name: "Tambahkan ke ciri privat" }).click();
       await expect(finderPage.getByLabel("Ciri privat kepemilikan")).toHaveValue(/LOGITECH\nM331/);
       await expect(finderPage.getByLabel("Deskripsi publik")).toHaveValue(publicDescription);
