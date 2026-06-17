@@ -21,8 +21,8 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
           ref={ref}
           type={isVisible ? "text" : "password"}
           className={cn(
-            "w-full pr-12 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
             className,
+            "w-full pr-12 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
           )}
         />
         <button
