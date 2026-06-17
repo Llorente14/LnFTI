@@ -40,11 +40,46 @@ async function writeInventoryAudit(
   entityId: string,
   metadata: Record<string, unknown>,
 ) {
-  await supabase.rpc("log_inventory_audit", {
+  const { error } = await supabase.rpc("log_inventory_audit", {
     event_action: action,
     event_entity_type: entityType,
     event_entity_id: entityId,
     event_metadata: metadata,
+  });
+
+  if (error) throw new Error("Audit inventaris gagal dicatat.");
+}
+
+async function removeStorageObjects(
+  supabase: DatabaseClient,
+  bucket: string,
+  paths: Array<string | null | undefined>,
+) {
+  const objectPaths = [...new Set(paths.filter((path): path is string => Boolean(path)))];
+  if (objectPaths.length === 0) return;
+  await supabase.storage.from(bucket).remove(objectPaths);
+}
+
+async function markImportRowFailed(
+  supabase: DatabaseClient,
+  rowId: string,
+  safeCode: string,
+) {
+  await supabase
+    .from("inventory_import_rows")
+    .update({
+      validation_status: "FAILED",
+      error_code: safeCode,
+      error_message: "import_media_failed",
+    })
+    .eq("id", rowId)
+    .in("validation_status", ["VALID", "WARNING", "FAILED"]);
+
+  await supabase.rpc("log_inventory_audit", {
+    event_action: "INVENTORY_IMPORT_ROW_FAILED",
+    event_entity_type: "inventory_import_row",
+    event_entity_id: rowId,
+    event_metadata: { safe_error: safeCode },
   });
 }
 
@@ -127,13 +162,22 @@ export async function previewInventoryImportAction(
   });
 
   if (jobError) {
+    await removeStorageObjects(supabase, INVENTORY_IMPORT_BUCKET, [workbookPath]);
     return { status: "error", message: "Job import gagal dibuat." };
   }
 
-  await writeInventoryAudit(supabase, "INVENTORY_IMPORT_JOB_CREATED", "inventory_import_job", jobId, {
-    workbook_sha256: parsed.workbookSha256,
-    source_sheet: parsed.sourceSheet,
-  });
+  try {
+    await writeInventoryAudit(supabase, "INVENTORY_IMPORT_JOB_CREATED", "inventory_import_job", jobId, {
+      workbook_sha256: parsed.workbookSha256,
+      source_sheet: parsed.sourceSheet,
+    });
+  } catch {
+    await removeStorageObjects(supabase, INVENTORY_IMPORT_BUCKET, [workbookPath]);
+    await supabase.from("inventory_import_jobs").update({ status: "FAILED" }).eq("id", jobId);
+    return { status: "error", message: "Audit job import gagal dibuat." };
+  }
+
+  const stagedPaths: string[] = [];
 
   for (const row of parsed.rows) {
     const plannedReportId = crypto.randomUUID();
@@ -156,6 +200,8 @@ export async function previewInventoryImportAction(
       if (error) {
         stagedItemPath = null;
         validationMessages.push("Foto barang gagal masuk staging.");
+      } else {
+        stagedPaths.push(itemPath);
       }
     }
 
@@ -168,6 +214,8 @@ export async function previewInventoryImportAction(
       if (error) {
         stagedPickupPath = null;
         validationMessages.push("Bukti pengambilan gagal masuk staging.");
+      } else {
+        stagedPaths.push(pickupPath);
       }
     }
 
@@ -188,8 +236,8 @@ export async function previewInventoryImportAction(
       pickup_date: row.pickupDate,
       item_image_storage_path: stagedItemPath,
       pickup_evidence_storage_path: stagedPickupPath,
-      item_image_sha256: row.itemImageSha256,
-      pickup_evidence_sha256: row.pickupEvidenceSha256,
+      item_image_sha256: stagedItemPath ? row.itemImageSha256 : null,
+      pickup_evidence_sha256: stagedPickupPath ? row.pickupEvidenceSha256 : null,
       row_fingerprint: row.rowFingerprint,
       planned_report_id: plannedReportId,
       validation_status: row.validationStatus === "VALID" && validationMessages.length > 0 ? "WARNING" : row.validationStatus,
@@ -197,16 +245,22 @@ export async function previewInventoryImportAction(
     });
 
     if (rowError) {
+      await removeStorageObjects(supabase, INVENTORY_IMPORT_BUCKET, [workbookPath, ...stagedPaths]);
+      await supabase.from("inventory_import_jobs").update({ status: "FAILED" }).eq("id", jobId);
       return { status: "error", message: `Row ${row.sourceRowNumber} gagal disimpan.` };
     }
   }
 
-  await writeInventoryAudit(supabase, "INVENTORY_IMPORT_PARSED", "inventory_import_job", jobId, {
-    total_rows: parsed.totalRows,
-    valid_rows: parsed.validRows,
-    warning_rows: parsed.warningRows,
-    error_rows: parsed.errorRows,
-  });
+  try {
+    await writeInventoryAudit(supabase, "INVENTORY_IMPORT_PARSED", "inventory_import_job", jobId, {
+      total_rows: parsed.totalRows,
+      valid_rows: parsed.validRows,
+      warning_rows: parsed.warningRows,
+      error_rows: parsed.errorRows,
+    });
+  } catch {
+    return { status: "error", message: "Import berhasil dipreview, tetapi audit parsing gagal dicatat." };
+  }
 
   return { status: "success", jobId, totalRows: parsed.totalRows };
 }
@@ -233,7 +287,7 @@ export async function updateInventoryImportRowAction(formData: FormData) {
     itemImageSha256,
   });
 
-  await supabase.rpc("update_inventory_import_row", {
+  const { error } = await supabase.rpc("update_inventory_import_row", {
     target_row_id: rowId,
     next_item_name: normalized.itemName,
     next_category: normalized.category,
@@ -249,31 +303,38 @@ export async function updateInventoryImportRowAction(formData: FormData) {
     next_validation_messages: normalized.validationMessages,
   });
 
-  redirect(`/admin/inventory/import/${jobId}?updated=1`);
+  redirect(`/admin/inventory/import/${jobId}?${error ? "updateError=1" : "updated=1"}`);
 }
 
 export async function commitInventoryRowsAction(formData: FormData) {
   const { user } = await requireRole(["verifier", "admin"], "/admin/inventory/import");
   const jobId = String(formData.get("jobId") ?? "");
-  const rowIds = formData.getAll("rowId").map(String).filter(Boolean);
+  const rowIds = [...new Set(formData.getAll("rowId").map(String).filter(Boolean))];
   const supabase = await createClient();
   let failedRows = 0;
 
   for (const rowId of rowIds) {
-    const { data: row } = await supabase
+    const { data: row, error: rowReadError } = await supabase
       .from("inventory_import_rows")
-      .select("id, planned_report_id, item_image_storage_path, validation_status")
+      .select("id, import_job_id, planned_report_id, item_image_storage_path, validation_status")
       .eq("id", rowId)
+      .eq("import_job_id", jobId)
       .maybeSingle();
     let permanentItemPath: string | null = null;
 
-    if (row?.item_image_storage_path && (row.validation_status === "VALID" || row.validation_status === "WARNING")) {
+    if (rowReadError || !row || !["VALID", "WARNING"].includes(row.validation_status)) {
+      failedRows += 1;
+      continue;
+    }
+
+    if (row.item_image_storage_path) {
       const extension = extensionFromPath(row.item_image_storage_path);
       const { data: staged, error: downloadError } = await supabase.storage
         .from(INVENTORY_IMPORT_BUCKET)
         .download(row.item_image_storage_path);
 
       if (downloadError || !staged) {
+        await markImportRowFailed(supabase, rowId, "staged_image_download_failed");
         failedRows += 1;
         continue;
       }
@@ -290,6 +351,7 @@ export async function commitInventoryRowsAction(formData: FormData) {
       );
 
       if (uploadError) {
+        await markImportRowFailed(supabase, rowId, "permanent_image_upload_failed");
         failedRows += 1;
         continue;
       }
@@ -299,22 +361,35 @@ export async function commitInventoryRowsAction(formData: FormData) {
       target_row_id: rowId,
       permanent_item_image_path: permanentItemPath,
     });
-    const resultRows = (data ?? []) as ImportInventoryRpcRow[];
-    if (error || resultRows.some((row) => row.validation_status === "FAILED")) {
-      if (permanentItemPath) await supabase.storage.from("report-images").remove([permanentItemPath]);
+    const result = ((data ?? []) as ImportInventoryRpcRow[])[0];
+
+    if (error || !result || result.validation_status === "FAILED") {
+      if (permanentItemPath) await removeStorageObjects(supabase, "report-images", [permanentItemPath]);
+      if (!result || result.validation_status !== "FAILED") {
+        await markImportRowFailed(supabase, rowId, "import_rpc_failed");
+      }
       failedRows += 1;
       continue;
     }
 
-    if (permanentItemPath && row?.item_image_storage_path) {
-      await supabase.storage.from(INVENTORY_IMPORT_BUCKET).remove([row.item_image_storage_path]);
+    if (result.validation_status === "SKIPPED" && permanentItemPath) {
+      await removeStorageObjects(supabase, "report-images", [permanentItemPath]);
+    }
+
+    if (row.item_image_storage_path) {
+      await removeStorageObjects(supabase, INVENTORY_IMPORT_BUCKET, [row.item_image_storage_path]);
     }
   }
 
-  await writeInventoryAudit(supabase, "INVENTORY_IMPORT_CONFIRMED", "inventory_import_job", jobId, {
-    row_count: rowIds.length,
-    actor_id: user.id,
-  });
+  try {
+    await writeInventoryAudit(supabase, "INVENTORY_IMPORT_CONFIRMED", "inventory_import_job", jobId, {
+      row_count: rowIds.length,
+      actor_id: user.id,
+      failed_rows: failedRows,
+    });
+  } catch {
+    failedRows += 1;
+  }
 
   const params = new URLSearchParams({ committed: "1" });
   if (failedRows > 0) params.set("failed", String(failedRows));

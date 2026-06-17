@@ -49,12 +49,14 @@ async function writeInventoryAudit(
   entityId: string,
   metadata: Record<string, unknown>,
 ) {
-  await supabase.rpc("log_inventory_audit", {
+  const { error } = await supabase.rpc("log_inventory_audit", {
     event_action: action,
     event_entity_type: "export_job",
     event_entity_id: entityId,
     event_metadata: metadata,
   });
+
+  if (error) throw new Error("Audit export gagal dicatat.");
 }
 
 function parsePeriodYear(value: string) {
@@ -112,7 +114,7 @@ export async function createInventoryExportAction(
       .gte("event_at", new Date(`${periodYear}-01-01T00:00:00+07:00`).toISOString())
       .lte("event_at", new Date(`${periodYear}-12-31T23:59:59+07:00`).toISOString());
   }
-  if (from) query = query.gte("event_at", new Date(from).toISOString());
+  if (from) query = query.gte("event_at", new Date(`${from}T00:00:00+07:00`).toISOString());
   if (to) query = query.lte("event_at", new Date(`${to}T23:59:59+07:00`).toISOString());
 
   const { data, error, count } = await query;
@@ -139,14 +141,14 @@ export async function createInventoryExportAction(
       .select("report_id, raw_status")
       .in("report_id", reportIds)
     : { data: [], error: null };
-  const pickupEvidence = requestedSensitive && reportIds.length
+  const pickupEvidenceMetadata = reportIds.length
     ? await supabase
       .from("inventory_pickup_evidence")
       .select("report_id, storage_path")
       .in("report_id", reportIds)
     : { data: [], error: null };
 
-  if (reportImages.error || importRows.error || pickupEvidence.error) {
+  if (reportImages.error || importRows.error || pickupEvidenceMetadata.error) {
     return { status: "error", message: "Metadata gambar/status import gagal dibaca." };
   }
 
@@ -161,7 +163,7 @@ export async function createInventoryExportAction(
   }
 
   const pickupByReport = new Map<string, string>();
-  for (const evidence of pickupEvidence.data ?? []) {
+  for (const evidence of pickupEvidenceMetadata.data ?? []) {
     if (evidence.report_id && !pickupByReport.has(evidence.report_id)) pickupByReport.set(evidence.report_id, evidence.storage_path);
   }
 
@@ -169,8 +171,12 @@ export async function createInventoryExportAction(
   for (const report of baseReports) {
     const itemImagePath = firstImageByReport.get(report.id);
     const pickupPath = requestedSensitive ? pickupByReport.get(report.id) : undefined;
-    const itemImage = itemImagePath ? await downloadImage(supabase, "report-images", itemImagePath) : null;
-    const pickup = pickupPath ? await downloadImage(supabase, "inventory-imports", pickupPath) : null;
+    const itemImage = format === "XLSX" && itemImagePath
+      ? await downloadImage(supabase, "report-images", itemImagePath)
+      : null;
+    const pickup = format === "XLSX" && pickupPath
+      ? await downloadImage(supabase, "inventory-imports", pickupPath)
+      : null;
 
     if (format === "XLSX" && itemImagePath && !itemImage) {
       return { status: "error", message: "Foto barang gagal dibaca dari Storage privat." };
@@ -187,7 +193,7 @@ export async function createInventoryExportAction(
     reports.push({
       ...report,
       raw_status: rawStatusByReport.get(report.id) ?? null,
-      item_image: format === "XLSX" ? itemImage : null,
+      item_image: itemImage,
       pickup_evidence: format === "XLSX" && requestedSensitive ? pickup : null,
       has_item_image: Boolean(itemImagePath),
       has_pickup_evidence: Boolean(pickupByReport.get(report.id)),
@@ -202,7 +208,7 @@ export async function createInventoryExportAction(
   const path = `${user.id}/${jobId}/inventory-export.${extension}`;
   const expiresAt = new Date(Date.now() + (requestedSensitive ? 45 * 60 * 1000 : 24 * 60 * 60 * 1000)).toISOString();
   const workbookYear = periodYear
-    ?? (from ? new Date(from).getFullYear() : null)
+    ?? (from ? new Date(`${from}T00:00:00+07:00`).getFullYear() : null)
     ?? (reports[0]?.event_at ? new Date(reports[0].event_at).getFullYear() : null)
     ?? new Date().getFullYear();
   const body = format === "CSV"
@@ -227,12 +233,17 @@ export async function createInventoryExportAction(
     return { status: "error", message: "Job export gagal dibuat." };
   }
 
-  await writeInventoryAudit(supabase, requestedSensitive ? "INVENTORY_EXPORT_SENSITIVE_REQUESTED" : "INVENTORY_EXPORT_REQUESTED", jobId, {
-    format,
-    row_count: reports.length,
-    include_sensitive: requestedSensitive,
-    filter: { reportStatus, custodyStatus, category, location, periodYear, from, to },
-  });
+  try {
+    await writeInventoryAudit(supabase, requestedSensitive ? "INVENTORY_EXPORT_SENSITIVE_REQUESTED" : "INVENTORY_EXPORT_REQUESTED", jobId, {
+      format,
+      row_count: reports.length,
+      include_sensitive: requestedSensitive,
+      filter: { reportStatus, custodyStatus, category, location, periodYear, from, to },
+    });
+  } catch {
+    await supabase.from("export_jobs").update({ status: "FAILED", error_message: "audit_failed" }).eq("id", jobId);
+    return { status: "error", message: "Audit export gagal dibuat." };
+  }
 
   const { error: uploadError } = await supabase.storage.from(INVENTORY_EXPORT_BUCKET).upload(path, body, {
     contentType,
@@ -242,16 +253,32 @@ export async function createInventoryExportAction(
 
   if (uploadError) {
     await supabase.from("export_jobs").update({ status: "FAILED", error_message: "upload_failed" }).eq("id", jobId);
-    await writeInventoryAudit(supabase, "INVENTORY_EXPORT_FAILED", jobId, { safe_error: "upload_failed" });
+    await supabase.rpc("log_inventory_audit", {
+      event_action: "INVENTORY_EXPORT_FAILED",
+      event_entity_type: "export_job",
+      event_entity_id: jobId,
+      event_metadata: { safe_error: "upload_failed" },
+    });
     return { status: "error", message: "File export gagal disimpan." };
   }
 
-  await supabase
+  const { error: completeError } = await supabase
     .from("export_jobs")
     .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
     .eq("id", jobId);
 
-  await writeInventoryAudit(supabase, "INVENTORY_EXPORT_COMPLETED", jobId, { format, row_count: reports.length });
+  if (completeError) {
+    await supabase.storage.from(INVENTORY_EXPORT_BUCKET).remove([path]);
+    return { status: "error", message: "Status export gagal diselesaikan." };
+  }
+
+  try {
+    await writeInventoryAudit(supabase, "INVENTORY_EXPORT_COMPLETED", jobId, { format, row_count: reports.length });
+  } catch {
+    await supabase.storage.from(INVENTORY_EXPORT_BUCKET).remove([path]);
+    await supabase.from("export_jobs").update({ status: "FAILED", error_message: "audit_failed" }).eq("id", jobId);
+    return { status: "error", message: "Audit penyelesaian export gagal dicatat." };
+  }
 
   return {
     status: "success",
