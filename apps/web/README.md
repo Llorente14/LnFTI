@@ -89,11 +89,24 @@ Use only the local anon/publishable key. Do not pass a service-role key to brows
 ## Verification
 
 ```bash
+npm ci
 npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
+
+Local Docker/Supabase is optional for developer machines. Database reset, database tests, database lint, auth integration, and MVP integration are validated by repository GitHub Actions for PR review. Do not run production-linked Supabase commands as a substitute for local Docker testing.
+
+## DPM inventory import/export
+
+Verifier/admin users can manage DPM inventory snapshots from `/admin/inventory`.
+
+- `/admin/inventory/import` previews `.xlsx` workbooks, reads embedded worksheet images through OOXML relationships, stages workbook/media in `inventory-imports`, allows verifier/admin row corrections, and commits selected `VALID`/`WARNING` rows through the audited `import_inventory_row` RPC.
+- `/admin/inventory/export` creates filtered XLSX or CSV snapshots for found reports, embeds XLSX item images server-side, records the job in `export_jobs`, stores files in the private `inventory-exports` bucket, and returns an internal download route.
+- Sensitive pickup-evidence export is admin-only, XLSX-only, reason-gated, shorter-lived, and audited. CSV exports only contain safe image-presence indicators.
+
+Do not commit production workbooks, exported files, signed URLs, or credentials. Operational steps are documented in `../../docs/MVP_OPERATION_GUIDE.md`.
 
 ## Report submission
 

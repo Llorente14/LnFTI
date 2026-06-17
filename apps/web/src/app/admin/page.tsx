@@ -60,6 +60,12 @@ export default async function AdminPage() {
               <IconArrowRight size={17} aria-hidden="true" />
             </Link>
           </Button>
+          <Button asChild variant="secondary">
+            <Link href="/admin/inventory">
+              Inventaris
+              <IconArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </Button>
         </div>
       </div>
 
