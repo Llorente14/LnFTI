@@ -92,16 +92,15 @@ export async function parseInventoryWorkbook(buffer: Buffer): Promise<InventoryW
     const row = worksheet.getRow(rowNumber);
     const itemName = cellText(row.getCell(header.firstColumn).value).replace(/\s+/g, " ").trim();
 
-    if (!itemName) {
-      continue;
-    }
+    if (!itemName) continue;
 
     const locationCell = row.getCell(header.firstColumn + 2);
     const eventCell = row.getCell(header.firstColumn + 3);
     const statusCell = row.getCell(header.firstColumn + 4);
     const pickupCell = row.getCell(header.firstColumn + 5);
-    const rawStatus = cellText(statusCell.value);
-    const status = mapInventoryStatus(rawStatus);
+    const sourceRawStatus = cellText(statusCell.value);
+    const status = mapInventoryStatus(sourceRawStatus);
+    const normalizedRawStatus = status.normalizedStatus;
     const eventAt = normalizeInventoryDate(rawCellValue(eventCell));
     const pickupDate = normalizeInventoryDate(rawCellValue(pickupCell));
     const location = normalizeInventoryLocation(rawCellValue(locationCell));
@@ -113,7 +112,7 @@ export async function parseInventoryWorkbook(buffer: Buffer): Promise<InventoryW
       "Nama Barang": itemName,
       "Ditemukan Di-": cellText(locationCell.value),
       "Tanggal Turun dari Fakultas": cellText(eventCell.value),
-      "Status Barang": rawStatus,
+      "Status Barang": sourceRawStatus,
       "Tanggal Barang diambil": cellText(pickupCell.value),
     };
 
@@ -139,7 +138,7 @@ export async function parseInventoryWorkbook(buffer: Buffer): Promise<InventoryW
       itemName,
       locationDetail: location.value,
       eventAt: normalizedEventAt,
-      rawStatus,
+      rawStatus: normalizedRawStatus,
       itemImageSha256: itemImage?.sha256 ?? null,
     });
 
@@ -152,7 +151,7 @@ export async function parseInventoryWorkbook(buffer: Buffer): Promise<InventoryW
       building: INVENTORY_DEFAULT_BUILDING,
       locationDetail: location.value,
       eventAt: normalizedEventAt,
-      rawStatus,
+      rawStatus: normalizedRawStatus,
       reportStatus: status.status === "ok" ? status.reportStatus : null,
       custodyStatus: status.status === "ok" ? status.custodyStatus : null,
       pickupDate: normalizedPickupDate,
@@ -167,7 +166,7 @@ export async function parseInventoryWorkbook(buffer: Buffer): Promise<InventoryW
         itemName,
         locationDetail: location.value,
         eventAt: normalizedEventAt,
-        rawStatus,
+        rawStatus: normalizedRawStatus,
       }),
     });
   }
