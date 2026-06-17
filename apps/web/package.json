@@ -13,7 +13,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "test:auth-integration": "node --test test/auth-integration.test.mjs",
+    "test:auth-integration": "node --test test/auth-integration.test.mjs test/password-manager-layout.auth-integration.test.mjs",
     "test:mvp-integration": "node --test --test-concurrency=1 test/mvp-flow.integration.test.mjs"
   },
   "dependencies": {
@@ -34,7 +34,7 @@
     "@tailwindcss/postcss": "4.1.5",
     "@types/node": "24.3.0",
     "@types/react": "19.1.8",
-    "@types/react-dom": "19.1.9",
+    "@types/react-dom": "19.2.7",
     "eslint": "9.28.0",
     "eslint-config-next": "16.2.9",
     "pg": "8.16.3",
