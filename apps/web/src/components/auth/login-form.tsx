@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { loginAction, type AuthActionState } from "@/lib/auth/actions";
 
 const initialState: AuthActionState = { status: "idle" };
@@ -49,13 +50,12 @@ export function LoginForm({
         <label htmlFor="password" className="font-heading text-sm font-semibold">
           Password
         </label>
-        <input
+        <PasswordField
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
-          className="h-11 w-full rounded-md border bg-surface px-3 text-sm"
+          className="h-11 rounded-md border bg-surface px-3 text-sm"
         />
       </div>
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { registerAction, type AuthActionState } from "@/lib/auth/actions";
 import { buildInstitutionalEmail, parseNim } from "@/lib/auth/validation";
 
@@ -139,14 +140,14 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           <label htmlFor="password" className="font-heading text-sm font-semibold">
             Password
           </label>
-          <input
+          <PasswordField
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
-            className="h-11 w-full rounded-md border bg-surface px-3 text-sm"
+            visibilityLabel="password"
+            className="h-11 rounded-md border bg-surface px-3 text-sm"
           />
         </div>
 
@@ -154,14 +155,14 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           <label htmlFor="password_confirmation" className="font-heading text-sm font-semibold">
             Konfirmasi password
           </label>
-          <input
+          <PasswordField
             id="password_confirmation"
             name="password_confirmation"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
-            className="h-11 w-full rounded-md border bg-surface px-3 text-sm"
+            visibilityLabel="konfirmasi password"
+            className="h-11 rounded-md border bg-surface px-3 text-sm"
           />
         </div>
       </div>

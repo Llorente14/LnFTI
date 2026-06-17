@@ -79,7 +79,7 @@ export async function setTestUserRole(client, userId, role) {
 export async function loginThroughUi(page, env, identity, next = "/me/profile") {
   await page.goto(`${env.appUrl}/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email institusional").fill(identity.email);
-  await page.getByLabel("Password").fill(identity.passphrase);
+  await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
   await page.getByRole("button", { name: "Masuk" }).click();
   await page.waitForURL(`**${next}`);
 }

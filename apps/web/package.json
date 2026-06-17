@@ -13,7 +13,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "test:auth-integration": "node --test test/auth-integration.test.mjs",
+    "test:auth-integration": "node --test test/auth-integration.test.mjs test/password-manager-layout.auth-integration.test.mjs",
     "test:mvp-integration": "node --test --test-concurrency=1 test/mvp-flow.integration.test.mjs"
   },
   "dependencies": {
