@@ -16,7 +16,8 @@ import {
 } from "@/components/reports/image-picker";
 import { Button } from "@/components/ui/button";
 import { analyzeReportImage } from "@/lib/ai/analyze-image";
-import { appendOcrToPrivateCharacteristics } from "@/lib/ai/report-suggestions";
+import { appendOcrToPrivateCharacteristics, formatDetectedLabel, topDetectedLabel } from "@/lib/ai/report-suggestions";
+import type { AiAnalysisResult } from "@/lib/ai/schemas";
 import { REPORT_CATEGORIES, REPORT_IMAGE_BUCKET, REPORT_TYPES } from "@/lib/reports/constants";
 import { buildReportImagePath } from "@/lib/reports/image-path";
 import {
@@ -28,6 +29,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 type FieldErrors = Partial<Record<keyof ReportFormValues | "images", string>>;
+type AutofillField = "itemName" | "category";
+type ManualAutofillOverrides = Record<AutofillField, boolean>;
 
 const baseInitialValues: Omit<ReportFormValues, "reportType"> = {
   itemName: "",
@@ -59,22 +62,59 @@ export function ReportForm() {
   const [aiFeedback, setAiFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
+  const [manualAutofillOverrides, setManualAutofillOverrides] = useState<ManualAutofillOverrides>({
+    itemName: false,
+    category: false,
+  });
   const activeAnalysis = useRef<{ imageId: string; controller: AbortController } | null>(null);
   const imagesRef = useRef(images);
+  const manualAutofillOverridesRef = useRef(manualAutofillOverrides);
 
   const maxEventAt = useMemo(() => formatDatetimeLocal(new Date()), []);
 
   function updateValue<Key extends keyof ReportFormValues>(key: Key, value: ReportFormValues[Key]) {
     setValues((current) => ({ ...current, [key]: value }));
+    if (key === "itemName" || key === "category") {
+      setManualAutofillOverrides((current) => ({ ...current, [key]: true }));
+    }
   }
 
   useEffect(() => {
     imagesRef.current = images;
   }, [images]);
 
+  useEffect(() => {
+    manualAutofillOverridesRef.current = manualAutofillOverrides;
+  }, [manualAutofillOverrides]);
+
   useEffect(() => () => {
     activeAnalysis.current?.controller.abort();
   }, []);
+
+  function applyAnalysisToForm(result: AiAnalysisResult) {
+    const itemName = topDetectedLabel(result);
+    const category = result.detection?.suggestedCategory ?? null;
+    const nextValues: Partial<ReportFormValues> = {};
+    const applied: string[] = [];
+
+    if (itemName && !manualAutofillOverridesRef.current.itemName) {
+      nextValues.itemName = formatDetectedLabel(itemName);
+      applied.push("nama barang");
+    }
+
+    if (category && !manualAutofillOverridesRef.current.category) {
+      nextValues.category = category;
+      applied.push("kategori");
+    }
+
+    if (Object.keys(nextValues).length === 0) {
+      setAiFeedback("Hasil foto tersedia. Form tidak diubah karena isian sudah Anda sesuaikan.");
+      return;
+    }
+
+    setValues((current) => ({ ...current, ...nextValues }));
+    setAiFeedback(`${applied.join(" dan ")} diperbarui dari foto. Anda tetap bisa mengubahnya.`);
+  }
 
   function handleImagesChange(nextImages: SelectedReportImage[]) {
     const imageIds = new Set(nextImages.map((image) => image.id));
@@ -108,13 +148,14 @@ export function ReportForm() {
         return;
       }
       setAnalysisStates((current) => ({ ...current, [image.id]: { status: "success", result } }));
+      applyAnalysisToForm(result);
     } catch (error) {
       if (controller.signal.aborted) {
         return;
       }
       const errorMessage = error instanceof Error
         ? error.message
-        : "Analisis AI gagal. Data laporan Anda belum berubah.";
+        : "Bantuan foto gagal. Data laporan Anda belum berubah.";
       setAnalysisStates((current) => ({ ...current, [image.id]: { status: "error", message: errorMessage } }));
     } finally {
       if (activeAnalysis.current?.imageId === image.id) {
@@ -124,18 +165,10 @@ export function ReportForm() {
     }
   }
 
-  function applySuggestedCategory(category: string) {
-    if (!REPORT_CATEGORIES.includes(category as (typeof REPORT_CATEGORIES)[number])) {
-      return;
-    }
-    updateValue("category", category as ReportFormValues["category"]);
-    setAiFeedback("Kategori diperbarui dari saran AI.");
-  }
-
   function appendOcrText(fullText: string) {
     const result = appendOcrToPrivateCharacteristics(values.privateCharacteristics, fullText);
     if (result.status === "too_long") {
-      setAiFeedback("Teks AI tidak muat di ciri privat. Salin bagian yang perlu secara manual.");
+      setAiFeedback("Teks dari foto tidak muat di ciri privat. Salin bagian yang perlu secara manual.");
       return;
     }
     if (result.status === "duplicate") {
@@ -316,7 +349,7 @@ export function ReportForm() {
           <h2 className="font-heading text-lg font-bold">Foto opsional</h2>
           <p className="text-sm text-muted-foreground">Tambahkan hingga tiga foto. File disimpan privat dan bukan URL publik.</p>
         </div>
-        <ImagePicker images={images} onChange={handleImagesChange} itemName={values.itemName} analysisStates={analysisStates} isAnalysisBusy={Boolean(activeAnalysisId) || isSubmitting} currentCategory={values.category} onAnalyze={handleAnalyzeImage} onApplyCategory={applySuggestedCategory} onAppendOcr={appendOcrText} />
+        <ImagePicker images={images} onChange={handleImagesChange} itemName={values.itemName} analysisStates={analysisStates} isAnalysisBusy={Boolean(activeAnalysisId) || isSubmitting} currentCategory={values.category} onAnalyze={handleAnalyzeImage} onAppendOcr={appendOcrText} />
         {aiFeedback ? <p className="text-sm font-medium text-primary">{aiFeedback}</p> : null}
         {fieldError(errors, "images")}
       </section>
