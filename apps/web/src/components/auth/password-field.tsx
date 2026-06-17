@@ -15,14 +15,14 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
     const label = `${isVisible ? "Sembunyikan" : "Tampilkan"} ${visibilityLabel}`;
 
     return (
-      <div className="relative">
+      <div className="flex items-stretch gap-2">
         <input
           {...props}
           ref={ref}
           type={isVisible ? "text" : "password"}
           className={cn(
             className,
-            "w-full pr-12 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
+            "min-w-0 flex-1 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
           )}
         />
         <button
@@ -30,8 +30,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
           aria-label={label}
           title={label}
           aria-pressed={isVisible}
+          aria-controls={props.id}
           onClick={() => setIsVisible((current) => !current)}
-          className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border bg-surface text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           {isVisible ? (
             <IconEyeOff size={20} stroke={1.8} aria-hidden="true" />
