@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireUser } from "@/lib/auth/server";
+import { isVerifiedStudentProfile } from "@/lib/auth/profile-verification";
+import { getCurrentProfileResult, requireUser } from "@/lib/auth/server";
 import { REPORT_IMAGE_BUCKET } from "@/lib/reports/constants";
 import { parseReportImagePath } from "@/lib/reports/image-path";
 import {
@@ -24,6 +25,7 @@ export type ReportImageFinalizeInput = {
 };
 
 const GENERIC_SUBMIT_ERROR = "Laporan belum dapat dikirim. Periksa data lalu coba lagi.";
+const PROFILE_NOT_VERIFIED_ERROR = "Akun mahasiswa Anda belum terverifikasi untuk mengirim laporan.";
 const GENERIC_CLEANUP_ERROR = "Pengiriman gagal. Coba lagi dari awal.";
 
 function safeCleanupLog(message: string) {
@@ -40,6 +42,15 @@ export async function createDraftReportAction(
 
   if (!parsed.success) {
     return { status: "error", message: GENERIC_SUBMIT_ERROR };
+  }
+
+  const profileResult = await getCurrentProfileResult();
+  if (profileResult.status === "query_error") {
+    return { status: "error", message: GENERIC_SUBMIT_ERROR };
+  }
+
+  if (profileResult.status !== "ok" || !isVerifiedStudentProfile(profileResult.profile)) {
+    return { status: "error", message: PROFILE_NOT_VERIFIED_ERROR };
   }
 
   const supabase = await createClient();
