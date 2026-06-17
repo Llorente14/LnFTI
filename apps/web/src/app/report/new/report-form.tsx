@@ -314,7 +314,7 @@ export function ReportForm() {
       <section className="space-y-3">
         <div>
           <h2 className="font-heading text-lg font-bold">Foto opsional</h2>
-          <p className="text-sm text-muted-foreground">Tambahkan hingga tiga foto. File disimpan privat dan bukan URL publik.</p>
+          <p className="text-sm text-muted-foreground">Tambahkan hingga tiga foto. Foto hanya dipakai untuk membantu verifikasi laporan.</p>
         </div>
         <ImagePicker images={images} onChange={handleImagesChange} itemName={values.itemName} analysisStates={analysisStates} isAnalysisBusy={Boolean(activeAnalysisId) || isSubmitting} currentCategory={values.category} onAnalyze={handleAnalyzeImage} onApplyCategory={applySuggestedCategory} onAppendOcr={appendOcrText} />
         {aiFeedback ? <p className="text-sm font-medium text-primary">{aiFeedback}</p> : null}
@@ -322,7 +322,7 @@ export function ReportForm() {
       </section>
 
       <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">Setelah dikirim, status laporan menjadi <strong>PENDING_REVIEW</strong>.</p>
+        <p className="text-sm text-muted-foreground">Setelah dikirim, laporan masuk antrean review.</p>
         <Button type="submit" size="lg" disabled={isSubmitting} className="min-w-44">{isSubmitting ? "Mengirim..." : "Kirim laporan"}</Button>
       </div>
     </form>

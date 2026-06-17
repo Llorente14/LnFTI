@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     env = getAiServiceEnv();
   } catch {
-    return errorResponse(503, "AI_CONFIGURATION_MISSING", "Analisis AI belum dikonfigurasi.");
+    return errorResponse(503, "AI_CONFIGURATION_MISSING", "Bantuan foto belum tersedia.");
   }
 
   const settled = await Promise.allSettled([
@@ -87,6 +87,6 @@ export async function POST(request: NextRequest) {
     "AI_ANALYSIS_UNAVAILABLE",
     timedOut
       ? "Analisis membutuhkan waktu terlalu lama. Anda tetap dapat mengisi laporan secara manual."
-      : "Analisis AI belum tersedia. Anda tetap dapat mengisi laporan secara manual.",
+      : "Bantuan foto belum tersedia. Anda tetap dapat mengisi laporan secara manual.",
   );
 }
