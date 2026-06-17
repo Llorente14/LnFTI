@@ -179,7 +179,7 @@ export default async function MyClaimsPage({ searchParams }: MyClaimsPageProps) 
 
               {claim.claim_status === "REJECTED" ? (
                 <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                  Klaim ditolak. Pengajuan ulang hanya mungkin bila laporan masih PUBLISHED dan aturan database mengizinkan.
+                  Klaim ditolak. Pengajuan ulang hanya mungkin bila laporan masih terbuka dan aturan layanan mengizinkan.
                 </p>
               ) : null}
 
