@@ -122,6 +122,87 @@ maybeTest("auth integration protects private routes without session", async () =
   );
 });
 
+maybeTest("browser password toggles render icons and preserve independent form state", async () => {
+  assert.ok(appUrl, "NEXT_APP_URL is required");
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const passwordValue = "VisiblePassword123!";
+  const confirmationValue = "IndependentPassword456!";
+
+  try {
+    await page.goto(`${appUrl}/register`);
+
+    const passwordInput = page.getByLabel("Password", { exact: true });
+    const confirmationInput = page.getByLabel("Konfirmasi password", { exact: true });
+    const passwordToggle = page.getByRole("button", {
+      name: "Tampilkan password",
+      exact: true,
+    });
+    const confirmationToggle = page.getByRole("button", {
+      name: "Tampilkan konfirmasi password",
+      exact: true,
+    });
+
+    await passwordInput.fill(passwordValue);
+    await confirmationInput.fill(confirmationValue);
+    await page.evaluate(() => {
+      window.__passwordToggleSubmitCount = 0;
+      document.querySelector("form")?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        window.__passwordToggleSubmitCount += 1;
+      });
+    });
+
+    assert.equal(await passwordInput.getAttribute("type"), "password");
+    assert.equal(await confirmationInput.getAttribute("type"), "password");
+    assert.equal(await passwordToggle.locator("svg").count(), 1);
+    assert.equal(await confirmationToggle.locator("svg").count(), 1);
+
+    const toggleBox = await passwordToggle.boundingBox();
+    assert.ok(toggleBox);
+    assert.ok(toggleBox.width >= 44);
+    assert.ok(toggleBox.height >= 44);
+
+    const inputPaddingRight = await passwordInput.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).paddingRight),
+    );
+    assert.ok(inputPaddingRight >= 48);
+
+    await passwordToggle.click();
+    assert.equal(await passwordInput.getAttribute("type"), "text");
+    assert.equal(await confirmationInput.getAttribute("type"), "password");
+    assert.equal(await passwordInput.inputValue(), passwordValue);
+    assert.equal(await confirmationInput.inputValue(), confirmationValue);
+    assert.equal(new URL(page.url()).pathname, "/register");
+    assert.equal(await page.evaluate(() => window.__passwordToggleSubmitCount), 0);
+    assert.equal(
+      await page.getByRole("button", { name: "Sembunyikan password", exact: true }).locator("svg").count(),
+      1,
+    );
+
+    await page.getByRole("button", { name: "Sembunyikan password", exact: true }).click();
+    assert.equal(await passwordInput.getAttribute("type"), "password");
+
+    await confirmationToggle.focus();
+    await confirmationToggle.press("Enter");
+    assert.equal(await passwordInput.getAttribute("type"), "password");
+    assert.equal(await confirmationInput.getAttribute("type"), "text");
+    assert.equal(await passwordInput.inputValue(), passwordValue);
+    assert.equal(await confirmationInput.inputValue(), confirmationValue);
+    assert.equal(await page.evaluate(() => window.__passwordToggleSubmitCount), 0);
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Sembunyikan konfirmasi password", exact: true })
+        .locator("svg")
+        .count(),
+      1,
+    );
+  } finally {
+    await browser.close();
+  }
+});
+
 maybeTest("browser auth session reaches profile, survives reload, and logs out", async () => {
   requireAppEnv();
   requireIntegrationEnv();
@@ -136,7 +217,7 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
     await page.getByLabel("NIM").fill(identity.nim);
     await page.getByLabel("Email institusional").fill(identity.email);
     await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
-    await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
+    await page.getByLabel("Konfirmasi password", { exact: true }).fill(identity.passphrase);
     await page.getByRole("button", { name: "Daftar" }).click();
 
     await page.waitForURL((url) => url.pathname === "/auth/check-email", { waitUntil: "commit" });
@@ -147,7 +228,7 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
 
     await page.goto(`${appUrl}/login?next=%2Fme%2Fprofile`);
     await page.getByLabel("Email institusional").fill(identity.email);
-    await page.getByLabel("Password").fill(identity.passphrase);
+    await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
     await page.getByRole("button", { name: "Masuk" }).click();
     await page.getByText("Email belum dikonfirmasi.").waitFor();
 
@@ -172,12 +253,12 @@ maybeTest("browser auth session reaches profile, survives reload, and logs out",
 
     await page.goto(`${appUrl}/login?next=%2Fme%2Fprofile`);
     await page.getByLabel("Email institusional").fill(identity.email);
-    await page.getByLabel("Password").fill("wrong-password");
+    await page.getByLabel("Password", { exact: true }).fill("wrong-password");
     await page.getByRole("button", { name: "Masuk" }).click();
     await page.getByText("Email atau password tidak valid.").waitFor();
 
     await page.getByLabel("Email institusional").fill(identity.email);
-    await page.getByLabel("Password").fill(identity.passphrase);
+    await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
     await page.getByRole("button", { name: "Masuk" }).click();
     await page.waitForURL("**/me/profile");
     await assertProfileVisible(page, identity.email, identity.nim);
@@ -238,7 +319,7 @@ async function submitRegistration(page, identity) {
   await page.getByLabel("NIM").fill(identity.nim);
   await page.getByLabel("Email institusional").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.passphrase);
-  await page.getByLabel("Konfirmasi password").fill(identity.passphrase);
+  await page.getByLabel("Konfirmasi password", { exact: true }).fill(identity.passphrase);
   await page.getByRole("button", { name: "Daftar" }).click();
 }
 
