@@ -66,7 +66,7 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
 
       <div className="mt-5 border-b pb-6">
         <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">Review laporan</p>
-        <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Queue PENDING_REVIEW</h1>
+        <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Antrean review laporan</h1>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
           Laporan paling lama tampil lebih dulu agar review berjalan adil.
         </p>

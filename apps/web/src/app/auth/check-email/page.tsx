@@ -28,7 +28,7 @@ export default async function CheckEmailPage({ searchParams }: CheckEmailPagePro
         <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">Konfirmasi email</p>
         <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight">Cek email institusional</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Buka link konfirmasi dari Supabase Auth di inbox email mahasiswa. Setelah terkonfirmasi, masuk kembali ke LnFTI.
+          Buka link konfirmasi di inbox email mahasiswa. Setelah terkonfirmasi, masuk kembali ke LnFTI.
         </p>
         {showResentMessage ? (
           <p className="mt-5 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">

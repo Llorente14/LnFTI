@@ -34,7 +34,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md items-center px-4 py-16 sm:px-6">
       <div className="w-full rounded-xl border bg-surface p-6 sm:p-8">
-        <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">Supabase Auth</p>
+        <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">Akses akun</p>
         <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight">Masuk ke LnFTI</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           Gunakan email institusional mahasiswa UNTAR FTI.

@@ -58,7 +58,7 @@ export default async function ProfilePage() {
             <p className="font-heading text-xs font-bold uppercase tracking-[0.18em] text-primary">Profil mahasiswa</p>
             <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight">Akun saya</h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              Data institusional ini berasal dari validasi Supabase Auth dan trigger database.
+              Data institusional ini berasal dari validasi akun mahasiswa.
             </p>
           </div>
           <form action={logoutAction}>

@@ -36,7 +36,7 @@ export function ClaimDecisionControls({
         const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
         const decision = submitter?.value;
         const message = decision === "APPROVE"
-          ? "Setujui klaim ini? Klaim menjadi APPROVED, laporan menjadi MATCHING, klaim PENDING lain ditolak, dan handover fisik tetap wajib dilakukan."
+          ? "Setujui klaim ini? Klaim lain untuk laporan ini akan ditolak, dan serah-terima fisik tetap wajib dilakukan."
           : "Tolak klaim ini? Hanya klaim ini yang ditolak, laporan tetap publik, dan klaim lain dapat ditinjau nanti.";
 
         if (!window.confirm(message)) {
