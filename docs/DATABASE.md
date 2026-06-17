@@ -193,3 +193,48 @@ Report image object paths must use:
 ```
 
 `public.report_images.storage_path` stores this object path, not a public URL. Upload UI remains deferred to LNFTI-16. Public image delivery remains deferred to LNFTI-17. Remote database push was not performed for LNFTI-15.
+
+## LNFTI-34 Inventory Import and Export
+
+Migrations:
+
+```text
+supabase/migrations/20260617070000_inventory_import_export.sql
+supabase/migrations/20260617110000_inventory_import_export_hardening.sql
+```
+
+These migrations add verifier/admin inventory import metadata, private pickup-evidence metadata, import/export storage buckets, and audited inventory RPCs:
+
+- `public.inventory_import_jobs`
+- `public.inventory_import_rows`
+- `public.inventory_pickup_evidence`
+- `storage.buckets` entries for `inventory-imports` and `inventory-exports`
+- `public.update_inventory_import_row(...)`
+- `public.import_inventory_row(target_row_id uuid, permanent_item_image_path text)`
+- `public.expire_inventory_files()`
+
+The import flow stores parsed workbook rows before creating reports. Only verifier/admin users can preview, correct, and commit imports. Row edits are normalized server-side and persisted through `update_inventory_import_row`, which rechecks role, ownership, official category, dates, mapped status, duplicate fingerprint, and audit logging.
+
+Workbook files, item photos, and pickup evidence are first staged in the private `inventory-imports` bucket under `<user_id>/<job_id>/...`. During commit, the application promotes staged item photos to the private `report-images` bucket and passes the permanent path into `import_inventory_row`. Pickup evidence remains private in `inventory-imports` and is tracked in `public.inventory_pickup_evidence`; it is not exposed through public report image views.
+
+The import RPC re-checks role, job ownership, normalized row validity, pickup-date requirements, and importability inside the database before inserting a `FOUND` report. Cross-job duplicate row fingerprints are marked `SKIPPED` and linked to the existing report instead of creating another report.
+
+Exports reuse `public.export_jobs` with `dataset = 'dpm_inventory'` and write generated files to the private `inventory-exports` bucket. The web UI returns an internal download route, not a storage signed URL. The route authenticates the user, rechecks ownership/admin access, rejects expired jobs, and creates a short-lived signed URL only at download time.
+
+Sensitive XLSX export of pickup evidence is admin-only, requires a reason, stores `include_sensitive = true`, uses a shorter expiry, and is audited. CSV exports never include binary files, signed URLs, private storage paths, or pickup evidence.
+
+`expire_inventory_files()` marks expired import/export jobs as `EXPIRED`, deletes staged import files and export files, and writes inventory audit events. It does not delete permanent report images created from successfully imported rows.
+
+Run the database suite after changing this migration:
+
+```bash
+npx supabase db reset
+npx supabase test db
+npx supabase db lint --level warning
+```
+
+If local Docker/Supabase is unavailable, do not treat that as a blocker for LNFTI-34 local development. Use repository GitHub Actions as the authoritative validation for starting local Supabase, resetting the database from migrations, running pgTAP/database tests, running database lint, auth integration tests, and MVP integration tests.
+
+Do not run `supabase db push`, migration repair, destructive production commands, or `supabase db lint --linked` against production merely to replace local Docker testing.
+
+Remote database push was not performed for LNFTI-34.
