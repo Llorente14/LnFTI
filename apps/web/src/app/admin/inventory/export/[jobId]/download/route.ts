@@ -31,12 +31,20 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   if (job.expires_at && new Date(job.expires_at).getTime() <= Date.now()) {
+    const { error: removeError } = await supabase.storage
+      .from(INVENTORY_EXPORT_BUCKET)
+      .remove([job.storage_path]);
+
+    if (removeError) {
+      return new NextResponse("Export sudah kedaluwarsa dan sedang menunggu pembersihan.", { status: 503 });
+    }
+
     await supabase.from("export_jobs").update({ status: "EXPIRED" }).eq("id", job.id);
     await supabase.rpc("log_inventory_audit", {
       event_action: "INVENTORY_EXPORT_EXPIRED",
       event_entity_type: "export_job",
       event_entity_id: job.id,
-      event_metadata: { storage_path: job.storage_path },
+      event_metadata: { object_removed: true },
     });
     return new NextResponse("Export sudah kedaluwarsa.", { status: 410 });
   }
