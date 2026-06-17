@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { IconSearch, IconUser } from "@tabler/icons-react";
+import { IconUser } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/server";
@@ -42,9 +42,6 @@ export async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href="/reports" aria-label="Cari laporan" className="inline-flex size-10 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white md:hidden">
-            <IconSearch size={19} aria-hidden="true" />
-          </Link>
           {user ? (
             <Button asChild variant="secondary" size="sm" className="max-w-40 border-white/40 text-white hover:bg-white/10 sm:max-w-56">
               <Link href="/me/profile" aria-label={`Buka profil ${userLabel}`}>
