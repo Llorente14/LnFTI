@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Preview Import Inventaris" };
 
+const DPM_STATUSES = ["SEKRE DPM", "PROKER", "SIAP DIDONASIKAN", "DIAMBIL MAHASISWA"] as const;
+
 type PageProps = {
   params: Promise<{ jobId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -68,9 +70,13 @@ export default async function ImportPreviewPage({ params, searchParams }: PagePr
           Commit import selesai diproses. {query.failed ? `${query.failed} row gagal diproses. ` : ""}Periksa status tiap row.
         </p>
       ) : null}
-
       {query.updated ? (
         <p className="mt-5 rounded-md border bg-muted px-3 py-2 text-sm">Perbaikan row tersimpan.</p>
+      ) : null}
+      {query.updateError ? (
+        <p className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+          Perbaikan row gagal disimpan. Periksa nilai input lalu coba lagi.
+        </p>
       ) : null}
 
       <div className="mt-6 space-y-4">
@@ -78,6 +84,7 @@ export default async function ImportPreviewPage({ params, searchParams }: PagePr
           const itemImageUrl = row.item_image_storage_path ? imageUrls.get(row.item_image_storage_path) : null;
           const pickupImageUrl = row.pickup_evidence_storage_path ? imageUrls.get(row.pickup_evidence_storage_path) : null;
           const locked = row.validation_status === "IMPORTED";
+          const knownStatus = DPM_STATUSES.includes(row.raw_status as (typeof DPM_STATUSES)[number]);
 
           return (
             <form key={row.id} action={updateInventoryImportRowAction} className="rounded-lg border bg-surface p-4">
@@ -129,8 +136,8 @@ export default async function ImportPreviewPage({ params, searchParams }: PagePr
                   <label className="space-y-1 text-sm font-semibold">
                     <span>Status DPM</span>
                     <select name="rawStatus" defaultValue={row.raw_status} disabled={locked} className="h-10 w-full rounded-md border bg-background px-3">
-                      {["SEKRE DPM", "PROKER", "SIAP DIDONASIKAN", "DIAMBIL MAHASISWA"].map((status) => <option key={status} value={status}>{status}</option>)}
-                      <option value={row.raw_status}>{row.raw_status}</option>
+                      {DPM_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                      {!knownStatus ? <option value={row.raw_status}>{row.raw_status}</option> : null}
                     </select>
                   </label>
                   <label className="space-y-1 text-sm font-semibold">
@@ -196,7 +203,6 @@ export default async function ImportPreviewPage({ params, searchParams }: PagePr
           </table>
         </div>
         <Button type="submit" className="mt-5">Commit row terpilih</Button>
-        <Button type="submit" variant="secondary" className="ml-3 mt-5">Retry row gagal</Button>
       </form>
     </main>
   );
