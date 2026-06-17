@@ -159,3 +159,14 @@ test("finalization metadata enforces sort order shape and alt text length", () =
     /160/,
   );
 });
+
+test("report form ships editable location defaults", () => {
+  const source = readFileSync("src/app/report/new/report-form.tsx", "utf8");
+
+  assert.match(source, /campus: "Kampus 1"/);
+  assert.match(source, /building: "Gedung R"/);
+  assert.match(source, /locationDetail: "Area FTI"/);
+  assert.match(source, /onChange=\{\(event\) => updateValue\("campus", event\.target\.value\)\}/);
+  assert.match(source, /onChange=\{\(event\) => updateValue\("building", event\.target\.value\)\}/);
+  assert.match(source, /onChange=\{\(event\) => updateValue\("locationDetail", event\.target\.value\)\}/);
+});
