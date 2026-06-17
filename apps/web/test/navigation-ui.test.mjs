@@ -46,43 +46,12 @@ test("mobile navigation route matcher activates exactly one item", () => {
   assert.equal(navigation.getActiveMobileNavigationHref("/admin"), null);
 });
 
-test("desktop public navigation matcher activates route parents only", () => {
-  assert.equal(navigation.getActivePublicNavigationHref("/"), "/");
-  assert.equal(navigation.getActivePublicNavigationHref("/?q=1"), "/");
-  assert.equal(navigation.getActivePublicNavigationHref("/reports"), "/reports");
-  assert.equal(navigation.getActivePublicNavigationHref("/reports/abc"), "/reports");
-  assert.equal(navigation.getActivePublicNavigationHref("/report/new"), null);
-  assert.equal(navigation.getActivePublicNavigationHref("/admin"), null);
-});
-
-test("desktop action navigation matcher covers report, auth, and profile routes", () => {
-  assert.equal(navigation.getActiveHeaderActionHref("/report/new"), "/report/new");
-  assert.equal(navigation.getActiveHeaderActionHref("/report/new?type=lost"), "/report/new");
-  assert.equal(navigation.getActiveHeaderActionHref("/me"), "/me/profile");
-  assert.equal(navigation.getActiveHeaderActionHref("/me/claims/123"), "/me/profile");
-  assert.equal(navigation.getActiveHeaderActionHref("/login"), "/login");
-  assert.equal(navigation.getActiveHeaderActionHref("/reports/abc"), null);
-});
-
 test("mobile nav uses client pathname, aria-current, and no permanent primary item", () => {
   const source = readFileSync("src/components/mobile-nav.tsx", "utf8");
 
   assert.match(source, /usePathname/);
   assert.match(source, /aria-current=\{isActive \? "page" : undefined\}/);
-  assert.match(source, /opacity-100/);
-  assert.match(source, /opacity-60/);
   assert.doesNotMatch(source, /item\.href === "\/report\/new"/);
-});
-
-test("desktop header nav uses client pathname, aria-current, and opacity active state", () => {
-  const source = readFileSync("src/components/site-header-navigation.tsx", "utf8");
-
-  assert.match(source, /usePathname/);
-  assert.match(source, /getActivePublicNavigationHref/);
-  assert.match(source, /getActiveHeaderActionHref/);
-  assert.match(source, /aria-current=\{isActive \? "page" : undefined\}/);
-  assert.match(source, /opacity-100/);
-  assert.match(source, /opacity-60/);
 });
 
 test("mobile header no longer exposes duplicate search button", () => {

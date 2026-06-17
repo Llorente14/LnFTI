@@ -17,55 +17,22 @@ export const mobileNavigation = [
   { href: "/me/reports", label: "Saya", icon: IconUser },
 ] as const;
 
-function cleanPathname(pathname: string) {
-  return pathname.split(/[?#]/)[0] || "/";
-}
+export function getActiveMobileNavigationHref(pathname: string) {
+  const cleanPathname = pathname.split(/[?#]/)[0] || "/";
 
-export function getActivePublicNavigationHref(pathname: string) {
-  const currentPathname = cleanPathname(pathname);
-
-  if (currentPathname === "/") {
+  if (cleanPathname === "/") {
     return "/";
   }
 
-  if (currentPathname === "/reports" || currentPathname.startsWith("/reports/")) {
+  if (cleanPathname === "/reports" || cleanPathname.startsWith("/reports/")) {
     return "/reports";
   }
 
-  return null;
-}
-
-export function getActiveHeaderActionHref(pathname: string) {
-  const currentPathname = cleanPathname(pathname);
-
-  if (currentPathname === "/report" || currentPathname.startsWith("/report/")) {
+  if (cleanPathname === "/report" || cleanPathname.startsWith("/report/")) {
     return "/report/new";
   }
 
-  if (currentPathname === "/me" || currentPathname.startsWith("/me/")) {
-    return "/me/profile";
-  }
-
-  if (currentPathname === "/login") {
-    return "/login";
-  }
-
-  return null;
-}
-
-export function getActiveMobileNavigationHref(pathname: string) {
-  const currentPathname = cleanPathname(pathname);
-  const publicHref = getActivePublicNavigationHref(currentPathname);
-
-  if (publicHref) {
-    return publicHref;
-  }
-
-  if (currentPathname === "/report" || currentPathname.startsWith("/report/")) {
-    return "/report/new";
-  }
-
-  if (currentPathname === "/me" || currentPathname.startsWith("/me/")) {
+  if (cleanPathname === "/me" || cleanPathname.startsWith("/me/")) {
     return "/me/reports";
   }
 

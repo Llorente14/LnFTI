@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { IconUser } from "@tabler/icons-react";
 
-import { SiteHeaderNavigation } from "@/components/site-header-navigation";
+import { Button } from "@/components/ui/button";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/server";
+import { publicNavigation } from "@/lib/navigation";
 
 function resolveUserLabel(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
@@ -31,7 +33,31 @@ export async function SiteHeader() {
           L<span className="text-[var(--gold-light)]">&amp;</span>F
         </Link>
 
-        <SiteHeaderNavigation isAuthenticated={Boolean(user)} userLabel={userLabel} />
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Navigasi utama">
+          {publicNavigation.map((item) => (
+            <Link key={item.href} href={item.href} className="text-sm text-white/70 transition-colors hover:text-white">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {user ? (
+            <Button asChild variant="secondary" size="sm" className="max-w-40 border-white/40 text-white hover:bg-white/10 sm:max-w-56">
+              <Link href="/me/profile" aria-label={`Buka profil ${userLabel}`}>
+                <IconUser size={16} aria-hidden="true" />
+                <span className="truncate">{userLabel}</span>
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" size="sm" className="hidden border-white/40 text-white hover:bg-white/10 sm:inline-flex">
+              <Link href="/login">Login</Link>
+            </Button>
+          )}
+          <Button asChild variant="gold" size="sm">
+            <Link href="/report/new">Laporkan</Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
