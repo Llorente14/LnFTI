@@ -39,6 +39,7 @@ export function normalizeEditableInventoryRow(input: NormalizeEditableRowInput) 
   const eventAt = normalizeInventoryDate(input.eventDate);
   const pickupDate = normalizeInventoryDate(input.pickupDate);
   const status = mapInventoryStatus(input.rawStatus);
+  const normalizedRawStatus = status.normalizedStatus;
   const messages = [...location.warnings];
 
   if (!REPORT_CATEGORIES.includes(input.category as InventoryCategory)) {
@@ -62,7 +63,7 @@ export function normalizeEditableInventoryRow(input: NormalizeEditableRowInput) 
     itemName,
     locationDetail: location.value,
     eventAt: normalizedEventAt,
-    rawStatus: input.rawStatus,
+    rawStatus: normalizedRawStatus,
     itemImageSha256: input.itemImageSha256,
   });
 
@@ -73,7 +74,7 @@ export function normalizeEditableInventoryRow(input: NormalizeEditableRowInput) 
     building: INVENTORY_DEFAULT_BUILDING,
     locationDetail: location.value,
     eventAt: normalizedEventAt,
-    rawStatus: input.rawStatus.trim().replace(/\s+/g, " "),
+    rawStatus: normalizedRawStatus,
     reportStatus: status.status === "ok" ? status.reportStatus : null,
     custodyStatus: status.status === "ok" ? status.custodyStatus : null,
     pickupDate: normalizedPickupDate,
@@ -81,7 +82,7 @@ export function normalizeEditableInventoryRow(input: NormalizeEditableRowInput) 
       itemName,
       locationDetail: location.value,
       eventAt: normalizedEventAt,
-      rawStatus: input.rawStatus,
+      rawStatus: normalizedRawStatus,
     }),
     rowFingerprint,
     validationStatus,
