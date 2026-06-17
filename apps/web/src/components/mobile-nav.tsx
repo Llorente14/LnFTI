@@ -21,7 +21,7 @@ export function MobileNav() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={isActive ? "mx-auto flex min-h-12 w-16 flex-col items-center justify-center rounded-xl bg-primary text-[11px] font-semibold text-primary-foreground" : "mx-auto flex min-h-12 w-16 flex-col items-center justify-center rounded-xl text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-primary"}
+                className={isActive ? "mx-auto flex min-h-12 w-16 flex-col items-center justify-center rounded-xl bg-primary text-[11px] font-semibold text-primary-foreground opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" : "mx-auto flex min-h-12 w-16 flex-col items-center justify-center rounded-xl text-[11px] font-medium text-muted-foreground opacity-60 hover:bg-muted hover:text-primary hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"}
               >
                 <Icon size={20} stroke={1.8} aria-hidden="true" />
                 <span>{item.label}</span>
