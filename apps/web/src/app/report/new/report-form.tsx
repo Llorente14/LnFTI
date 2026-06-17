@@ -37,9 +37,9 @@ const baseInitialValues: Omit<ReportFormValues, "reportType"> = {
   category: "Lainnya",
   publicDescription: "",
   privateCharacteristics: null,
-  campus: "",
-  building: "",
-  locationDetail: "",
+  campus: "Kampus 1",
+  building: "Gedung R",
+  locationDetail: "Area FTI",
   eventAt: formatDatetimeLocal(new Date()),
 };
 
