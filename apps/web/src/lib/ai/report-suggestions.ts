@@ -38,3 +38,14 @@ export function appendOcrToPrivateCharacteristics(
 export function topDetectedLabel(result: AiAnalysisResult): string | null {
   return result.detection?.detections[0]?.label ?? null;
 }
+
+export function formatDetectedLabel(label: string): string {
+  return label
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(" ");
+}
