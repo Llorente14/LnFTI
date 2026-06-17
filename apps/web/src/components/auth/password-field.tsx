@@ -5,12 +5,14 @@ import { forwardRef, useState, type InputHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
+type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+  visibilityLabel?: string;
+};
 
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
-  function PasswordField({ className, ...props }, ref) {
+  function PasswordField({ className, visibilityLabel = "password", ...props }, ref) {
     const [isVisible, setIsVisible] = useState(false);
-    const label = isVisible ? "Sembunyikan password" : "Tampilkan password";
+    const label = `${isVisible ? "Sembunyikan" : "Tampilkan"} ${visibilityLabel}`;
 
     return (
       <div className="relative">
@@ -18,7 +20,10 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
           {...props}
           ref={ref}
           type={isVisible ? "text" : "password"}
-          className={cn("w-full pr-12", className)}
+          className={cn(
+            "w-full pr-12 [&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
+            className,
+          )}
         />
         <button
           type="button"
