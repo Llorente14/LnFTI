@@ -18,8 +18,15 @@ export async function getInventorySchemaStatus(): Promise<InventorySchemaStatus>
 
   if (!error) return { ready: true };
 
+  const schemaMissing =
+    error.code === "PGRST205"
+    || error.code === "42P01"
+    || error.message.toLowerCase().includes("inventory_import_jobs");
+
   return {
     ready: false,
-    message: SCHEMA_UNAVAILABLE_MESSAGE,
+    message: schemaMissing
+      ? SCHEMA_UNAVAILABLE_MESSAGE
+      : "Status schema inventaris tidak dapat diverifikasi. Muat ulang halaman atau periksa koneksi database.",
   };
 }
