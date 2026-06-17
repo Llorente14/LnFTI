@@ -17,6 +17,28 @@ export const mobileNavigation = [
   { href: "/me/reports", label: "Saya", icon: IconUser },
 ] as const;
 
+export function getActiveMobileNavigationHref(pathname: string) {
+  const cleanPathname = pathname.split(/[?#]/)[0] || "/";
+
+  if (cleanPathname === "/") {
+    return "/";
+  }
+
+  if (cleanPathname === "/reports" || cleanPathname.startsWith("/reports/")) {
+    return "/reports";
+  }
+
+  if (cleanPathname === "/report" || cleanPathname.startsWith("/report/")) {
+    return "/report/new";
+  }
+
+  if (cleanPathname === "/me" || cleanPathname.startsWith("/me/")) {
+    return "/me/reports";
+  }
+
+  return null;
+}
+
 export const placeholderRoutes = [
   "/reports",
   "/reports/[id]",
